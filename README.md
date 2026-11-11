@@ -125,7 +125,8 @@ The real card with **simulated readings**; the geysers and values are made up.
 | ![Garage unreachable, with muted last known values](assets/screenshots/unreachable.png) | ![Next scheduled event details: today 9:30 PM, target 55 °C, Gas, switch-over on, weekdays](assets/screenshots/details.png) |
 | **Unreachable** | **Next event details** |
 
-Cards narrower than about 270 px always stack their readings, so cards side by side stay the same height:
+Cards narrower than about 295 px stack their readings, as in the Android app, so cards side by side stay the same
+height:
 
 ![Three narrow cards: Kitchen heating on gas with Boost, Laundry on both elements in vacation mode, Rooftop on one burner side](assets/screenshots/narrow.png)
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1 (2026-11-11)
+
+- Card: the Wi-Fi icon lights 3 arcs for Excellent, 2 for Good, 1 for Fair and only the dot, in amber, for Weak; all
+  three arcs are always drawn.
+- Card: whether the readings stack no longer depends on what a card shows. Every card stacks below one width (about
+  295 px with the default font), measured from a fixed widest-case sample with the card's own styles, the same rule as
+  the Android app.
+- Card: the name is 16 px.
+
 ## 0.6.0 (2026-11-11)
 
 - Add five read-only entities from fields `/quickStatus` already sends, with no new requests: **Network Wi-Fi

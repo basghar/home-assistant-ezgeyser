@@ -33,9 +33,10 @@ function icon(name) {
   return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${PATHS[name]}"/></svg>`;
 }
 // The Wi-Fi level (the integration's enum states), the word the footer shows, and how many arcs are lit, as in the app.
-const WIFI = {excellent:['Excellent',3], good:['Good',3], fair:['Fair',2], weak:['Weak',1]};
+const WIFI = {excellent:['Excellent',3], good:['Good',2], fair:['Fair',1], weak:['Weak',0]};
 const WIFI_ARCS = ['M8.82 15.32A4.5 4.5 0 0 1 15.18 15.32','M6.34 12.84A8 8 0 0 1 17.66 12.84','M3.87 10.37A11.5 11.5 0 0 1 20.13 10.37'];
-// The dot and every arc are always drawn: the lit ones in the item's colour, the rest in the inactive-arc token.
+// The dot and every arc are always drawn: the lit ones in the item's colour, the rest in the inactive-arc token. Weak
+// lights the dot alone, in the warning colour, so it still reads as Wi-Fi.
 function wifiIcon(level) {
   const lit = WIFI[level]?.[1] ?? 0;
   return `<svg class="icon wifi-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="18.5" r="1.6" fill="currentColor"/>${WIFI_ARCS.map((d,i) => `<path d="${d}" stroke="${i < lit ? 'currentColor' : 'var(--wifi-off)'}"/>`).join('')}</svg>`;
@@ -67,15 +68,14 @@ function linkItems(link) {
     + (link.clockOff ? item('clock','Clock off','device clock',icon('clockAlert'),true) : '');
 }
 // The adaptive steps, from natural widths measured with every text at full length (see `_fitLayout`). Text never
-// shrinks or wraps: the mode chips lose their words if the middle row does not fit, and the row stacks only if it still
-// does not; the footer drops the Wi-Fi word, then the timer's text, then truncates the state text, stopping at the first
-// step that fits. Below STACK_BELOW the row always stacks, whatever the content, so cards of the same width keep the same
-// layout and height; above it the row stacks only if even icon-only chips do not fit (extreme values only).
-const ROW_GAP = 10, CHIP = 22, CHIP_GAP = 6, STACK_BELOW = 240;
+// shrinks or wraps. The row stacks by the Android app's rule, whatever the card shows: iff the fixed worst case of
+// SAMPLE does not fit side by side, so cards of the same width always share a layout and height. The mode chips lose
+// their words if the card's own row does not fit; the footer drops the Wi-Fi word, then the timer's text, then truncates
+// the state text, stopping at the first step that fits.
+const ROW_GAP = 10;
 function fitLayout(m) {
-  const fits = right => m.left + ROW_GAP + right <= m.width;
-  const stacked = m.width < STACK_BELOW || !fits(m.rightIcons);
-  const chipsIcons = stacked ? m.right > m.width : !fits(m.right);
+  const stacked = m.sampleLeft + ROW_GAP + m.sampleRight > m.width;
+  const chipsIcons = (stacked ? 0 : m.left + ROW_GAP) + m.right > m.width;
   let footer = m.footer, footerStep = 0;
   for (const saving of [m.wifiWord, m.timerText]) {
     if (footer <= m.width) break;
@@ -84,6 +84,10 @@ function fitLayout(m) {
   if (footer > m.width) footerStep = 3;
   return {chipsIcons, stacked, footerStep};
 }
+// The worst case the stacking rule measures, with the card's own classes, in a hidden element: the widest reading and
+// second line on the left; the target, an event a week ahead and two icon-only mode chips on the right.
+const SAMPLE = `<div class="left"><div class="tank"></div><div class="readings"><div class="reading"><span class="number">88.8</span><span class="unit">°C</span></div><div class="secondary">Bottom 88.8°C</div></div></div>
+  <div class="right"><span class="line">${icon('target')}<span>Target</span><span class="value">72.5°C</span></span><span class="line">${icon('calendarClock')}<span>12:30 PM</span><span class="day-badge">+7</span><span class="quiet">→</span><span class="value">72.5°</span></span><div class="modes"><span class="chip">${icon('rocket')}</span><span class="chip">${icon('beach')}</span></div></div>`;
 function fitClasses(fit) {
   return [fit.chipsIcons && 'chips-icons', fit.stacked && 'stacked', fit.footerStep >= 1 && 'no-wifi-word',
     fit.footerStep >= 2 && 'no-timer-text', fit.footerStep >= 3 && 'truncate-state'].filter(Boolean).join(' ');
@@ -197,14 +201,15 @@ function tankColors(top, bottom) {
 const STYLE = `
 :host{display:block;--surface:#EFEDF4;--text:#1B1B1F;--secondary:#46464F;--tertiary:#77767F;--line:#DAD8E2;--off:#8E8C96;--ok:#1E6B3A;--ok-bg:#D4EEDB;--warn:#8A5100;--warn-bg:#FFDDB8;--primary:#3B57A6;--on-primary:#FFFFFF;--primary-bg:#DCE2FA;--dialog:#FBF8FF;--gas:#D9480F;--electric:#B86E00;--wifi-off:#CFCDD6;--line-h:18px;--chip-h:22px;--row-h:calc(2 * var(--line-h) + var(--chip-h) + 2 * 6px)}
 :host([dark]){--surface:#202024;--text:#E5E1E6;--secondary:#C6C5CF;--tertiary:#908F99;--line:#34343A;--off:#77767F;--ok:#9AD6A9;--ok-bg:#1E3826;--warn:#FFB95E;--warn-bg:#4A2B00;--primary:#B4C5FF;--on-primary:#13285E;--primary-bg:#2B3A66;--dialog:#2A2A2F;--gas:#FF8F57;--electric:#F2B33D;--wifi-off:#46454C}
-*{box-sizing:border-box}ha-card{display:block;background:var(--ha-card-background,var(--surface));color:var(--text);border:1px solid var(--ha-card-border-color,var(--line));border-radius:var(--ha-card-border-radius,16px);box-shadow:var(--ha-card-box-shadow,none);font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif);overflow:hidden}
-.card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:8px;min-width:0;height:22px}.name{margin:0;flex:1;min-width:0;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.details-button{border:0;background:none;color:var(--tertiary);padding:0;min-width:28px;min-height:28px;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button:focus-visible{outline:2px solid var(--primary)}
+*{box-sizing:border-box}ha-card{display:block;background:var(--ha-card-background,var(--surface));color:var(--text);border:1px solid var(--ha-card-border-color,var(--line));border-radius:var(--ha-card-border-radius,16px);box-shadow:var(--ha-card-box-shadow,none);overflow:hidden}ha-card,.sample{font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif)}
+.card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:8px;min-width:0;height:22px}.name{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.details-button{border:0;background:none;color:var(--tertiary);padding:0;min-width:28px;min-height:28px;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button:focus-visible{outline:2px solid var(--primary)}
 .temperatures{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:8px;align-items:center;min-height:var(--row-h);margin:12px 0 8px}.left{display:flex;align-items:center;align-self:stretch;gap:12px;min-width:0}.tank{width:11px;flex:none;align-self:stretch;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--line)}.half{height:50%;flex:1}.half+.half{border-top:1px solid var(--surface)}.half.fault{background:repeating-linear-gradient(135deg,var(--off) 0 3px,var(--surface) 3px 5px)!important}.readings{min-width:0}.reading{display:flex;align-items:baseline;gap:4px;white-space:nowrap;line-height:.75}.number{font-size:36px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}.unit{font-size:15px;color:var(--secondary)}.secondary{display:block;font-size:14px;line-height:.95;white-space:nowrap;color:var(--secondary);margin-top:11px}.fault-text{color:var(--warn)}
 .right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px;min-width:0;font-size:12px;color:var(--secondary);text-align:right}.line{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;max-width:100%;min-height:var(--line-h);white-space:nowrap;overflow:hidden}.line .icon{width:14px;height:14px}.value{font-weight:500;color:var(--text)}.quiet{color:var(--tertiary)}.day-badge{display:inline-grid;place-items:center;flex:none;height:18px;min-width:18px;padding:0 4px;border-radius:9px;background:var(--primary);color:var(--on-primary);font-size:10px;font-weight:600;line-height:1}.modes{display:flex;gap:6px;flex:none}.chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:var(--chip-h);min-width:var(--chip-h);border-radius:11px;padding:0 9px 0 7px;font-size:11px;font-weight:500;white-space:nowrap;background:var(--primary-bg);color:var(--primary)}.chip .icon{width:13px;height:13px}.chips-icons .chip{width:var(--chip-h);padding:0}.chips-icons .chip span{display:none}
 .footer{border-top:1px solid var(--line);padding-top:6px;display:flex;align-items:center;gap:8px;min-height:31px;font-size:12px;color:var(--secondary);white-space:nowrap}.start{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.sources{display:flex;gap:6px;flex:none}.heat-control{position:relative;width:24px;height:24px;flex:none}.heat-buttons{position:absolute;inset:0;display:flex}.heat-button{flex:1;min-width:0;height:100%}.heat{width:24px;height:24px;color:var(--off);overflow:visible}.glyph{fill:none;stroke:currentColor;stroke-width:2.3;stroke-linejoin:round}.on .glyph{fill:currentColor}.gas.on{color:var(--gas)}.electric.on{color:var(--electric)}.segment{fill:none;stroke:var(--off);opacity:.55;stroke-width:2.6;stroke-linecap:round}.gas .lit{stroke:var(--gas);opacity:1}.electric .lit{stroke:var(--electric);opacity:1}.activity{flex:none;overflow:hidden;text-overflow:ellipsis}.activity.heating{color:var(--text)}.timer,.wifi,.cloud,.clock{display:inline-flex;align-items:center;gap:4px;flex:none}.wifi .icon{width:18px;height:18px}.status{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}.warn{color:var(--warn)}.stale .number,.stale .unit,.stale .secondary{color:var(--tertiary)}.stale .tank{opacity:.45}.stale .right{color:var(--tertiary)}
 .no-wifi-word .wifi span,.no-timer-text .timer span{display:none}.truncate-state .activity{flex:0 1 auto;min-width:0}
 .stacked .temperatures{grid-template-columns:minmax(0,1fr)}.stacked .left{align-self:auto}.stacked .right{align-items:flex-start;justify-content:flex-start;min-height:var(--row-h);text-align:left;padding-left:23px}.stacked .line{justify-content:flex-start}
 .measure .temperatures{grid-template-columns:max-content max-content;width:max-content}.measure .footer{width:max-content}.measure .start,.measure .activity{flex:none}
+.sample{position:absolute;height:0;overflow:hidden;visibility:hidden;pointer-events:none;display:flex;flex-direction:column}.sample,.sample>*{width:max-content}
 dialog.details{border:0;padding:0;margin:auto;width:min(360px,calc(100vw - 32px));max-height:calc(100vh - 32px);border-radius:24px;background:var(--dialog);color:var(--text);font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif);font-size:14px;box-shadow:0 8px 32px rgba(0,0,0,.3)}dialog.details::backdrop{background:rgba(0,0,0,.45)}.sheet{padding:20px 20px 16px;outline:none}.sheet header{display:flex;align-items:center;gap:8px}.sheet h2{flex:1;margin:0;font-size:18px;font-weight:500}.icon-button{display:grid;place-items:center;width:40px;height:40px;margin:-8px -8px -8px 0;border:0;border-radius:50%;background:none;color:var(--secondary);cursor:pointer}.icon-button .icon{width:20px;height:20px}.when{margin:4px 0 12px;color:var(--secondary)}.sheet dl{margin:0;border-top:1px solid var(--line)}.row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}.row dt{color:var(--secondary)}.row dd{margin:0;font-weight:500;text-align:right}.sheet footer{display:flex;justify-content:space-between;gap:8px;margin-top:16px}.text-button,.filled-button{font:inherit;font-weight:500;min-height:40px;padding:0 16px;border-radius:20px;border:0;cursor:pointer}.text-button{background:none;color:var(--primary)}.filled-button{background:var(--primary);color:var(--on-primary)}.sheet button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 @media(max-width:600px){dialog.details{margin:auto 0 0;width:100vw;max-width:100vw;border-radius:24px 24px 0 0}.sheet{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
 `;
@@ -213,8 +218,11 @@ class EzGeyserCard extends HTMLElement {
     super(); this.attachShadow({mode:'open'}); this._last = null; this._fit = {chipsIcons:false,stacked:false,footerStep:0};
     // The details window is a native <dialog>, outside ha-card so the per-second re-render leaves it alone. HA's own
     // dialog elements are not a public API for cards.
-    this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card></ha-card><dialog class="details" aria-labelledby="details-title"></dialog>`;
+    this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card></ha-card><div class="sample chips-icons" aria-hidden="true">${SAMPLE}</div><dialog class="details" aria-labelledby="details-title"></dialog>`;
     this._card = this.shadowRoot.querySelector('ha-card');
+    this._sample = this.shadowRoot.querySelector('.sample');
+    // Fonts that load later, such as a theme's, change every width.
+    this._remeasure = () => { this._sampleSize = null; this._fitKey = null; this._fitLayout(); };
     this._dialog = this.shadowRoot.querySelector('dialog');
     this._card.addEventListener('click', e => {
       if (e.target.closest('[data-action="schedule"]')) return this._openDetails();
@@ -287,9 +295,13 @@ class EzGeyserCard extends HTMLElement {
   connectedCallback() {
     this._loadRegistry(); this._subscribeRegistry();
     // Widths measured with a fallback font are wrong once the web font arrives.
-    if (typeof document !== 'undefined') document.fonts?.ready.then(() => { this._fitKey = null; this._fitLayout(); });
+    if (typeof document !== 'undefined') {
+      document.fonts?.ready.then(this._remeasure);
+      document.fonts?.addEventListener('loadingdone',this._remeasure);
+    }
   }
   disconnectedCallback() {
+    if (typeof document !== 'undefined') document.fonts?.removeEventListener('loadingdone',this._remeasure);
     this._registryEpoch = (this._registryEpoch || 0) + 1;
     this._registryUnsubscribe?.();
     this._registryUnsubscribe = undefined;
@@ -351,7 +363,8 @@ class EzGeyserCard extends HTMLElement {
   }
   // Measures the natural widths once per new width or content, with every text at full length, and applies the
   // adaptive classes `fitLayout` picks. Classes only: the content is not rendered again. The observed card width keys
-  // the cache, so an unchanged render costs no layout.
+  // the cache, so an unchanged render costs no layout. The sample is measured once, then again after a font or theme
+  // change.
   _fitLayout() {
     const card = this._card.querySelector('.card');
     if (!card?.getBoundingClientRect) return;
@@ -364,10 +377,12 @@ class EzGeyserCard extends HTMLElement {
     card.className = classes('measure');
     const w = element => element?.getBoundingClientRect().width || 0;
     const one = selector => w(card.querySelector(selector));
-    const chips = card.querySelectorAll('.chip').length;
+    if (!this._sampleSize) {
+      const size = {sampleLeft:w(this._sample.querySelector('.left')), sampleRight:w(this._sample.querySelector('.right'))};
+      if (size.sampleLeft) this._sampleSize = size;
+    }
     this._fit = fitLayout({
-      width, left:one('.left'), right:one('.right'),
-      rightIcons:Math.max(...[...card.querySelectorAll('.right > .line')].map(w), chips ? chips * CHIP + (chips - 1) * CHIP_GAP : 0),
+      width, ...this._sampleSize, left:one('.left'), right:one('.right'),
       footer:one('.footer'), wifiWord:one('.wifi') - one('.wifi .icon'), timerText:one('.timer') - one('.timer .icon'),
     });
     card.className = classes(fitClasses(this._fit));
@@ -382,6 +397,10 @@ class EzGeyserCard extends HTMLElement {
     const hass = this._hass, config = this._config;
     const dark = config.theme === 'dark' || (config.theme !== 'light' && Boolean(hass.themes?.darkMode));
     this.toggleAttribute('dark',dark);
+    // A theme can bring its own font; it applies its styles on its own schedule, so measure again on the next frame.
+    const theme = JSON.stringify([hass.themes?.theme,hass.selectedTheme]);
+    if (this._theme !== undefined && theme !== this._theme && typeof requestAnimationFrame === 'function') requestAnimationFrame(this._remeasure);
+    this._theme = theme;
     const states = Object.fromEntries(Object.entries(this._ids).map(([key,id]) => [key,hass.states[id]]));
     const signature = JSON.stringify([dark,config.name,hass.locale,hass.config?.time_zone,hass.config?.unit_system,this._registryError,this._registry === undefined,this._deviceId,hass.devices?.[this._deviceId],Object.values(states)]);
     if (signature === this._signature) return;

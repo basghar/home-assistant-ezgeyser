@@ -9,7 +9,7 @@ function setup(config = {}) {
   class Element {
     attachShadow() {
       const dialog = this.dialog = {innerHTML:'',open:false,on:{},addEventListener(type,fn){this.on[type]=fn},showModal(){this.open=true},close(){this.open=false;this.on.close?.()}};
-      this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:selector => selector === 'dialog' ? dialog : this.card = {innerHTML:'',addEventListener(type,fn){this[type]=fn},querySelector(){}}};
+      this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:selector => selector === 'dialog' ? dialog : selector === '.sample' ? {} : this.card = {innerHTML:'',addEventListener(type,fn){this[type]=fn},querySelector(){}}};
     }
     toggleAttribute() {}
     dispatchEvent(event) { this.event = event; }
@@ -219,9 +219,9 @@ test('the footer end: Wi-Fi level, cloud and a clock warning, each its own butto
   assert.match(html,/class="clock entity-button warn" data-entity="clock" aria-label="Clock off. Open device clock details".*M20.986 12.502/);
   assert.match(t.update({wifi:'unknown'}),/aria-label="Cloud offline, clock off"/);
 });
-test('the Wi-Fi icon always draws the dot and three arcs, lighting 3, 3, 2 or 1 of them',()=>{
+test('the Wi-Fi icon always draws the dot and three arcs, lighting 3, 2, 1 or none of them',()=>{
   const {api}=setup();
-  for (const [level,lit] of [['excellent',3],['good',3],['fair',2],['weak',1]]) {
+  for (const [level,lit] of [['excellent',3],['good',2],['fair',1],['weak',0]]) {
     const svg=api.wifiIcon(level);
     assert.match(svg,/<circle cx="12" cy="18.5" r="1.6" fill="currentColor"\/>/);
     assert.equal((svg.match(/stroke="currentColor"/g)||[]).length,lit);assert.equal((svg.match(/stroke="var\(--wifi-off\)"/g)||[]).length,3-lit);
@@ -254,17 +254,18 @@ test('every row has the same fixed height, derived from a full three-line right 
   // No width-based rules: the adaptive steps come from measured widths only.
   assert.doesNotMatch(api.STYLE,/@container/);
 });
-test('adaptive steps follow measured widths in order and stop at the first that fits',()=>{
-  const {api}=setup();const fit=m=>api.fitLayout({left:113,right:148,rightIcons:138,footer:356,wifiWord:59,timerText:49,...m});
+test('the row stacks by the fixed sample alone; the chips and footer follow the card\'s own widths in order',()=>{
+  const {api}=setup();const fit=m=>api.fitLayout({sampleLeft:113,sampleRight:144,left:113,right:148,footer:356,wifiWord:59,timerText:49,...m});
   assert.deepEqual({...fit({width:358})},{chipsIcons:false,stacked:false,footerStep:0});
   assert.deepEqual({...fit({width:306})},{chipsIcons:false,stacked:false,footerStep:1});
-  assert.deepEqual({...fit({width:266})},{chipsIcons:true,stacked:false,footerStep:2});
-  // Stacked, the right column has the full width again, so the chips keep their words when they fit.
-  assert.deepEqual({...fit({width:240})},{chipsIcons:false,stacked:true,footerStep:3});
+  assert.deepEqual({...fit({width:268})},{chipsIcons:true,stacked:false,footerStep:2});
+  // The sample needs exactly 113 + 10 + 144 = 267. Stacked, the right column has the full width again, so the chips keep
+  // their words when they fit.
+  assert.equal(fit({width:267}).stacked,false);assert.deepEqual({...fit({width:266})},{chipsIcons:false,stacked:true,footerStep:2});
   assert.deepEqual({...fit({width:140})},{chipsIcons:true,stacked:true,footerStep:3});
-  // Below 240 px every card stacks, even when its content would fit, so equal-width cards match.
-  const small=m=>api.fitLayout({left:80,right:90,rightIcons:90,footer:150,wifiWord:40,timerText:0,...m});
-  assert.equal(small({width:239}).stacked,true);assert.equal(small({width:240}).stacked,false);
+  // The card's own content never decides: little content still stacks, the most never does.
+  assert.equal(fit({width:266,left:80,right:90}).stacked,true);
+  assert.deepEqual({...fit({width:300,left:200,right:200})},{chipsIcons:true,stacked:false,footerStep:1});
   assert.equal(fit({width:271}).chipsIcons,false); // exactly left + 10 + right
   assert.equal(fit({width:297}).footerStep,1);assert.equal(fit({width:296}).footerStep,2);
   // A step with nothing to hide still counts, so the later steps keep their order.
@@ -274,4 +275,13 @@ test('adaptive steps follow measured widths in order and stop at the first that 
   const t=setup();t.card._fit={chipsIcons:true,stacked:false,footerStep:2};t.card._signature=null;t.card._render();
   assert.match(t.html(),/^<div class="card chips-icons no-wifi-word no-timer-text">/);
   assert.deepEqual({...setup().card._fit},{chipsIcons:false,stacked:false,footerStep:0});assert.match(setup().html(),/^<div class="card">/);
+});
+test('the hidden sample holds the worst case, with the card\'s own classes and icon-only chips',()=>{
+  const {card,api}=setup();const sample=card.shadowRoot.innerHTML.match(/<div class="sample chips-icons" aria-hidden="true">([\s\S]*?)<dialog/)[1];
+  assert.match(sample,/<span class="number">88.8<\/span><span class="unit">°C<\/span>.*<div class="secondary">Bottom 88.8°C<\/div>/);
+  assert.match(sample,/<span class="line">.*<span>Target<\/span><span class="value">72.5°C<\/span><\/span>/);
+  assert.match(sample,/<span>12:30 PM<\/span><span class="day-badge">\+7<\/span><span class="quiet">→<\/span><span class="value">72.5°<\/span>/);
+  assert.equal((sample.match(/class="chip"/g)||[]).length,2);
+  assert.match(api.STYLE,/\.chips-icons \.chip\{width:var\(--chip-h\);padding:0\}/);assert.match(api.STYLE,/ha-card,\.sample\{font-family:/);
+  assert.match(api.STYLE,/\.name\{[^}]*font-size:16px/);
 });
