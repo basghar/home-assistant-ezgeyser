@@ -20,7 +20,7 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.util.hass_dict import HassKey
 
 from .const import DOMAIN
-from .guard import CLOUD_STATUS_PATH, DATA_PATH, QUICK_STATUS_PATH, url_for
+from .guard import CLOUD_STATUS_PATH, DATA_PATH, QUICK_STATUS_PATH, SCHEDULES_PATH, url_for
 
 TIMEOUT: Final = aiohttp.ClientTimeout(total=3)
 MAX_BODY_BYTES: Final = 8192
@@ -53,6 +53,7 @@ class QuickStatus:
     element2: bool
     source: int
     boost: bool
+    clock: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,9 @@ class GeyserClient:
 
     async def quick_status(self) -> QuickStatus:
         return parse_quick_status(await self._get(QUICK_STATUS_PATH))
+
+    async def schedules(self) -> bytes:
+        return await self._get(SCHEDULES_PATH)
 
     async def identity(self) -> Identity:
         return parse_identity(await self._get(DATA_PATH))
@@ -142,6 +146,7 @@ def parse_quick_status(body: bytes) -> QuickStatus:
     source = raw.get("source")
     if type(source) is not int:
         raise NotAGeyser("unexpected field: source")
+    clock = raw.get("now")
     return QuickStatus(
         top=_celsius(raw, "top"),
         top_ok=_flag(raw, "topOk"),
@@ -154,6 +159,7 @@ def parse_quick_status(body: bytes) -> QuickStatus:
         element2=_flag(raw, "heatingElement2"),
         source=source,
         boost=_flag(raw, "boostMode"),
+        clock=clock if isinstance(clock, int) and not isinstance(clock, bool) else 0,
     )
 
 

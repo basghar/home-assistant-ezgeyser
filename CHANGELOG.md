@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 (2026-11-11)
+
+- Show the next scheduled event on the overview card using a read-only timestamp sensor.
+- Read schedules every minute; invalid schedules and an incorrect device clock show an unknown time. Weekday order follows the Android app’s unverified Sunday-first assumption.
+
 ## 0.5.1 (2026-11-11)
 
 - Rename the burner entities to identify the left and right flame sensors on one burner.

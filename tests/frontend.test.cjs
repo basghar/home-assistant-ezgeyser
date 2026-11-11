@@ -14,7 +14,7 @@ function setup(config = {}) {
   vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon};', context);
   const card = new context.api.EzGeyserCard();
   card._registry = Object.entries(context.api.FIELDS).map(([key,suffix]) => ({
-    entity_id:`${['top','bottom','target','source'].includes(key) ? 'sensor' : 'binary_sensor'}.kitchen_${suffix}`,
+    entity_id:`${['top','bottom','target','source','next_event'].includes(key) ? 'sensor' : 'binary_sensor'}.kitchen_${suffix}`,
     platform:'ezgeyser',device_id:'kitchen-device',unique_id:`mac_${suffix}`,
   }));
   card.setConfig({entity:'sensor.kitchen_temperature_top',name:'Kitchen',...config});
@@ -28,6 +28,14 @@ test('idle, target, gas and electric bars, boost',() => {
   const t=setup(); assert.match(t.html(),/Sensors OK/);assert.match(t.html(),/Idle · Gas/);
   const html=t.update({burner_left:'on',element_2:'on',boost:'on'});
   assert.match(html,/Burner left side on/);assert.match(html,/Element 1 off, element 2 on/);assert.match(html,/>Heating</);assert.match(html,/>Boost</);
+});
+test('next scheduled event appears after target and boost',() => {
+  const t=setup();
+  const html=t.update({boost:'on',next_event:'2026-11-12T04:30:00Z'});
+  assert.ok(html.indexOf('Target 65') < html.indexOf('>Boost</'));
+  assert.ok(html.indexOf('>Boost</') < html.indexOf('Next Scheduled Event'));
+  assert.match(t.update({next_event:'unknown'}),/Next Scheduled Event<br>Unavailable/);
+  assert.doesNotMatch(t.update({top:'unavailable'}),/Next Scheduled Event/);
 });
 test('sensor faults stay faults and mask invalid numerical readings',() => {
   const t=setup();const html=t.update({top_ok:'off',top:'unknown'});

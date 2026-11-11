@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, override
 
 from homeassistant.components.sensor import (
@@ -67,7 +68,21 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(EzGeyserSensor(coordinator, description) for description in SENSORS)
+    async_add_entities(
+        [*(EzGeyserSensor(coordinator, description) for description in SENSORS), NextEventSensor(coordinator)]
+    )
+
+
+class NextEventSensor(EzGeyserEntity, SensorEntity):
+    _attr_translation_key = "next_scheduled_event"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, coordinator: EzGeyserCoordinator) -> None:
+        super().__init__(coordinator, "next_scheduled_event")
+
+    @property
+    def native_value(self) -> datetime | None:
+        return self.coordinator.next_event
 
 
 class EzGeyserSensor(EzGeyserEntity, SensorEntity):

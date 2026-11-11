@@ -13,6 +13,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from .conftest import CLOUD_STATUS, DATA, HOST, MAC, QUICK_STATUS
 
 ENTITY_IDS = {
+    "sensor.kitchen_next_scheduled_event": "unknown",
     "sensor.kitchen_temperature_top": "43.1",
     "binary_sensor.kitchen_temperature_top_ok": STATE_ON,
     "sensor.kitchen_temperature_bottom": "40.7",
@@ -43,7 +44,7 @@ def _answer(aioclient_mock: AiohttpClientMocker, quick_status: bytes | None = QU
         aioclient_mock.get(f"http://{HOST}/quickStatus", content=quick_status)
 
 
-async def test_setup_creates_one_named_device_with_eleven_prefixed_entities(
+async def test_setup_creates_one_named_device_with_twelve_prefixed_entities(
     hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
 ) -> None:
     await _setup(hass, entry)
@@ -59,7 +60,11 @@ async def test_setup_creates_one_named_device_with_eleven_prefixed_entities(
     assert {entity.entity_id for entity in entities} == set(ENTITY_IDS)
     assert {entity_id: hass.states.get(entity_id).state for entity_id in ENTITY_IDS} == ENTITY_IDS
     assert hass.states.get("sensor.kitchen_temperature_top").attributes["friendly_name"] == "Kitchen Temperature top"
-    assert [str(call[1]) for call in geyser.mock_calls] == [f"http://{HOST}/data", f"http://{HOST}/quickStatus"]
+    assert [str(call[1]) for call in geyser.mock_calls] == [
+        f"http://{HOST}/data",
+        f"http://{HOST}/quickStatus",
+        f"http://{HOST}/api/schedules",
+    ]
 
 
 async def test_setup_retries_while_the_geyser_does_not_answer(

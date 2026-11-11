@@ -1,4 +1,4 @@
-"""The read-only guard: three paths are allowed, and everything else is refused."""
+"""The read-only guard: four paths are allowed, and everything else is refused."""
 
 from custom_components.ezgeyser.guard import ALLOWED_PATHS, RequestRefused, check_request, lan_host, url_for
 import pytest
@@ -6,11 +6,11 @@ import pytest
 HOST = "http://192.168.50.51"
 # Other read-only endpoints of the firmware, which this integration does not need, and made-up paths. The guard is an
 # allow-list, so any path not on it is refused; no control endpoint is named in this repository.
-FORBIDDEN_PATHS = ["/liveData", "/wifiData", "/wifiStatus", "/api/schedules", "/", "/anything", "/set", "/control"]
+FORBIDDEN_PATHS = ["/liveData", "/wifiData", "/wifiStatus", "/", "/anything", "/set", "/control"]
 
 
-def test_allowed_paths_are_the_three_this_integration_reads() -> None:
-    assert frozenset({"/quickStatus", "/data", "/cloudStatus"}) == ALLOWED_PATHS
+def test_allowed_paths_are_the_four_this_integration_reads() -> None:
+    assert frozenset({"/quickStatus", "/data", "/cloudStatus", "/api/schedules"}) == ALLOWED_PATHS
 
 
 @pytest.mark.parametrize("path", sorted(ALLOWED_PATHS))

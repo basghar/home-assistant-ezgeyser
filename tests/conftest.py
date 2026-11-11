@@ -31,6 +31,7 @@ def geyser(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
     aioclient_mock.get(f"http://{HOST}/quickStatus", content=QUICK_STATUS)
     aioclient_mock.get(f"http://{HOST}/data", content=DATA)
     aioclient_mock.get(f"http://{HOST}/cloudStatus", content=CLOUD_STATUS)
+    aioclient_mock.get(f"http://{HOST}/api/schedules", content=b"[]")
     return aioclient_mock
 
 

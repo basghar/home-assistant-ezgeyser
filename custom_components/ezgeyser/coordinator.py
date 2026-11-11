@@ -1,14 +1,14 @@
 """Polls one geyser's `/quickStatus` every second, and checks now and then that the same geyser still answers."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
-from typing import override
+from typing import Any, override
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_MAC
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util.dt import utcnow
+from homeassistant.util.dt import now as local_now, utcnow
 
 from .api import GeyserClient, GeyserError, Identity, QuickStatus
 from .const import (
@@ -18,6 +18,7 @@ from .const import (
     POLL_INTERVAL,
     TOLERATED_FAILURES,
 )
+from .schedule import next_event, parse_schedules
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
         self.client = GeyserClient(hass, entry.data[CONF_HOST])
         self._failures = 0
         self._identity_due = utcnow()
+        self._schedules_due = utcnow()
+        self.schedules: list[dict[str, Any]] | None = None
+        self.next_event: datetime | None = None
 
     @override
     async def _async_setup(self) -> None:
@@ -63,6 +67,13 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
             if self._failures <= TOLERATED_FAILURES and self.data is not None:
                 return self.data
             raise _cannot_connect(error) from error
+        if utcnow() >= self._schedules_due:
+            self._schedules_due = utcnow() + timedelta(minutes=1)
+            try:
+                self.schedules = parse_schedules(await self.client.schedules())
+            except GeyserError:
+                self.schedules = None
+        self.next_event = next_event(self.schedules, status.clock, local_now()) if self.schedules is not None else None
         self._failures = 0
         self.update_interval = POLL_INTERVAL
         return status

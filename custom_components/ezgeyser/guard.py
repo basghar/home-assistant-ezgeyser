@@ -16,7 +16,8 @@ MAX_HOST_LENGTH: Final = 253
 QUICK_STATUS_PATH: Final = "/quickStatus"
 DATA_PATH: Final = "/data"
 CLOUD_STATUS_PATH: Final = "/cloudStatus"
-ALLOWED_PATHS: Final = frozenset({QUICK_STATUS_PATH, DATA_PATH, CLOUD_STATUS_PATH})
+SCHEDULES_PATH: Final = "/api/schedules"
+ALLOWED_PATHS: Final = frozenset({QUICK_STATUS_PATH, DATA_PATH, CLOUD_STATUS_PATH, SCHEDULES_PATH})
 
 _MDNS_NAME = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+local")
 

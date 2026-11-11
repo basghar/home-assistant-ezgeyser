@@ -87,6 +87,9 @@
             "name": "Source code"
           }
         }
+      },
+      "next_scheduled_event": {
+        "name": "Next scheduled event"
       }
     },
     "binary_sensor": {

@@ -201,12 +201,18 @@ use your Home Assistant units. The same example is in [`dashboards/geyser.yaml`]
 - The scan asks only devices that announced themselves on the network, one at a time, at most 8 per scan. It never
   tries every address in your network.
 
+The card shows **Next Scheduled Event** beneath the target (and Boost when active). Schedules are read once a minute.
+The calculation follows the Android app: the device clock is treated as local wall time, and weekday flags are assumed
+to start on Sunday; that weekday order has not been verified. Home Assistant must use the same local timezone as the
+geyser, and a clock discrepancy over two minutes makes the event unavailable. An empty or unreadable schedule also
+shows an unavailable event. Schedules are edited in the official ezGeyser app.
+
 ## Safety
 
 The geyser's local web interface has no password: any device on your network can use it. This integration is built so
 that it cannot be turned against the geyser:
 
-- It sends only three read-only requests, `GET /quickStatus`, `GET /data` and `GET /cloudStatus`. A guard
+- It sends only four read-only requests: `GET /quickStatus`, `GET /data`, `GET /cloudStatus` and `GET /api/schedules`. A guard
   (`custom_components/ezgeyser/guard.py`) refuses any other path, any other method, any query string, and any address
   outside your local network before a request is sent.
 - It has no switches, buttons, numbers or other controls, and no services that change anything.
