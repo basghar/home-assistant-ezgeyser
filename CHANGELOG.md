@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 (2026-11-11)
+
+- Add local Home Assistant branding using the Android app’s original calendar-and-flame icon, with transparent
+  256px and 512px PNGs. This replaces the missing-icon placeholder after updating and restarting Home Assistant.
+
 ## 0.4.0 (2026-11-11)
 
 - Add the responsive ezGeyser overview dashboard card with light/dark palettes, temperature and target readings,
