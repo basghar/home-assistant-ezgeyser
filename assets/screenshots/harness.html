@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- Renders the real ezgeyser-card.js with simulated readings for the README screenshots. See capture.sh. -->
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=block">
+<style>
+  body{margin:0;font-family:Roboto,Arial,sans-serif}
+  body.light{background:#fafafa}body.dark{background:#111111}
+  #stage{display:inline-grid;gap:16px;padding:24px;align-items:start}
+</style>
+<script src="../../custom_components/ezgeyser/www/ezgeyser-card.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+// Every reading below is made up. Heating states have not been captured from a real geyser.
+const GEYSERS = {
+  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'65'}},
+  bathroom: {name:'Ground Floor Bathroom', values:{top:'44.6', bottom:'38.9', target:'60', burner_left:'on', burner_right:'on', boost:'on'}},
+  upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'55', source:'hybrid', source_code:3, element_1:'on'}},
+  guest: {name:'Guest Bathroom', values:{top:'unknown', top_ok:'off', bottom:'41.3', target:'0'}},
+  garage: {name:'Garage', values:{top:'36.4', bottom:'33.0', target:'0'}, unreachable:true},
+  laundry: {name:'Laundry', values:{top:'42.0', bottom:'40.6', target:'50', element_1:'on', element_2:'on'}},
+  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on'}},
+};
+const SCENES = {
+  'dashboard-light': {dark:false, columns:[340,340], cards:['kitchen','bathroom','upstairs','guest']},
+  'dashboard-dark': {dark:true, columns:[340,340], cards:['kitchen','bathroom','upstairs','guest']},
+  'idle': {dark:false, columns:[360], cards:['kitchen']},
+  'gas-heating': {dark:true, columns:[360], cards:['bathroom']},
+  'electric-heating': {dark:false, columns:[360], cards:['upstairs']},
+  'sensor-fault': {dark:true, columns:[360], cards:['guest']},
+  'unreachable': {dark:false, columns:[360], cards:['garage']},
+  'narrow': {dark:false, columns:[200,200,200], cards:['kitchen','laundry','roof']},
+};
+const DEFAULTS = {source:'gas', source_code:1, top_ok:'on', bottom_ok:'on', burner_left:'off', burner_right:'off',
+  element_1:'off', element_2:'off', boost:'off'};
+const isSensor = key => ['top','bottom','target','source'].includes(key);
+
+function states(id, values, override) {
+  const all = {...DEFAULTS, ...values};
+  return Object.fromEntries(Object.entries(FIELDS).map(([key,suffix]) => [
+    `${isSensor(key) ? 'sensor' : 'binary_sensor'}.${id}_${suffix}`,
+    {state:override ?? all[key], last_updated:'2026-11-11T07:42:00',
+     attributes:{...(['top','bottom','target'].includes(key) ? {unit_of_measurement:'°C'} : {}),
+                 ...(key === 'source' ? {source_code:all.source_code} : {})}},
+  ]));
+}
+const registry = Object.keys(GEYSERS).flatMap(id => Object.entries(FIELDS).map(([key,suffix]) => ({
+  entity_id:`${isSensor(key) ? 'sensor' : 'binary_sensor'}.${id}_${suffix}`, platform:'ezgeyser',
+  device_id:`device-${id}`, unique_id:`70041d1234${id.length}_${suffix}`,
+})));
+
+async function main() {
+  const scene = SCENES[new URLSearchParams(location.search).get('s')];
+  document.body.className = scene.dark ? 'dark' : 'light';
+  const stage = document.getElementById('stage');
+  stage.style.gridTemplateColumns = scene.columns.map(w => `${w}px`).join(' ');
+  const live = Object.assign({}, ...Object.keys(GEYSERS).map(id => states(id, GEYSERS[id].values)));
+  const hass = {states:live, locale:{language:'en'}, themes:{darkMode:scene.dark}, callWS:async () => registry};
+  const cards = scene.cards.map(id => {
+    const card = document.createElement('ezgeyser-card');
+    card.setConfig({device_id:`device-${id}`, name:GEYSERS[id].name});
+    stage.append(card);
+    card.hass = hass;
+    return [id, card];
+  });
+  await document.fonts.ready;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  // An unreachable card first sees good readings, then keeps them as last known values.
+  for (const [id, card] of cards) {
+    if (GEYSERS[id].unreachable) card.hass = {...hass, states:{...live, ...states(id, {}, 'unavailable')}};
+  }
+  await new Promise(resolve => setTimeout(resolve, 100));
+  document.title = `${stage.offsetWidth}x${stage.offsetHeight}`;
+}
+main();
+</script>
+</body>
+</html>
