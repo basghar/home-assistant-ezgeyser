@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 (2026-11-12)
+
+- Round the optional **Network Wi-Fi RSSI** sensor to 5 dBm steps, with a 1 dBm buffer around rounding boundaries
+  to keep small fluctuations out of history. It remains disabled by default. The card's **Network Wi-Fi signal**
+  still stores only a level, with no numerical RSSI attribute.
+
 ## 0.6.2 (2026-11-11)
 
 - Card: add a top-right action that opens the geyser's embedded configuration page at `http://<device address>/`

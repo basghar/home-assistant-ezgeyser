@@ -45,7 +45,7 @@ DIAGNOSTIC_ENTITY_IDS = {
     "binary_sensor.kitchen_network_cloud_connection",
     "binary_sensor.kitchen_device_clock",
 }
-# Readings that change about every second; disabled by default, so they have no state until enabled.
+# Optional readings; disabled by default, so they have no state until enabled.
 RAW_ENTITY_IDS = {
     "sensor.kitchen_temperature_top_raw",
     "sensor.kitchen_temperature_bottom_raw",
@@ -348,8 +348,8 @@ async def test_wifi_cloud_and_timer_follow_the_status_and_are_unknown_when_left_
         assert hass.states.get(entity_id).state == STATE_UNKNOWN
 
 
-async def test_an_enabled_wifi_rssi_shows_dbm(
-    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
+async def test_an_enabled_wifi_rssi_is_rounded_without_raw_attributes(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     entry.add_to_hass(hass)
     er.async_get(hass).async_get_or_create(
@@ -360,8 +360,30 @@ async def test_an_enabled_wifi_rssi_shows_dbm(
 
     rssi = hass.states.get("sensor.kitchen_wifi_rssi")
     assert (rssi.state, rssi.attributes["unit_of_measurement"], rssi.attributes["device_class"]) == (
-        "-64", "dBm", "signal_strength",
+        "-65", "dBm", "signal_strength",
     )  # fmt: skip
+    assert "rssi" not in rssi.attributes
+
+    for reading in (-63, -62, -63, -62):
+        _answer(geyser, _status(rssi=reading))
+        await _tick(hass, freezer)
+        assert hass.states.get("sensor.kitchen_wifi_rssi").state == "-65"
+        assert hass.states.get("sensor.kitchen_network_wi_fi_signal").state == "fair"
+
+    _answer(geyser, _status(rssi=-59))
+    await _tick(hass, freezer)
+    assert hass.states.get("sensor.kitchen_wifi_rssi").state == "-60"
+    assert hass.states.get("sensor.kitchen_network_wi_fi_signal").state == "good"
+
+    status = json.loads(QUICK_STATUS)
+    del status["rssi"]
+    _answer(geyser, json.dumps(status).encode())
+    await _tick(hass, freezer)
+    assert hass.states.get("sensor.kitchen_wifi_rssi").state == STATE_UNKNOWN
+
+    _answer(geyser, _status(rssi=-62))
+    await _tick(hass, freezer)
+    assert hass.states.get("sensor.kitchen_wifi_rssi").state == "-60"
 
 
 async def test_device_clock_is_a_problem_more_than_two_minutes_from_home_assistant(

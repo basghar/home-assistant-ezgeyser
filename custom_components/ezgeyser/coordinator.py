@@ -20,7 +20,7 @@ from .const import (
     TOLERATED_FAILURES,
 )
 from .schedule import NextEvent, clock_off, next_event, parse_schedules
-from .smoothing import TemperatureFilter
+from .smoothing import TemperatureFilter, WifiRssiFilter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,8 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
         # The smoothed tank temperatures the temperature sensors show, by sensor key; `data` keeps the raw readings.
         self._filters = {"temperature_top": TemperatureFilter(), "temperature_bottom": TemperatureFilter()}
         self.temperatures: dict[str, float | None] = dict.fromkeys(self._filters)
+        self._rssi_filter = WifiRssiFilter()
+        self.wifi_rssi: int | None = None
 
     @override
     async def _async_setup(self) -> None:
@@ -87,6 +89,7 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
         self.clock_off = clock_off(status.clock, now)
         self.next_event = next_event(self.schedules, status.clock, now) if self.schedules is not None else None
         at = time.monotonic()
+        self.wifi_rssi = self._rssi_filter.update(status.rssi, at)
         for key, reading in (
             ("temperature_top", status.top if status.top_ok else None),
             ("temperature_bottom", status.bottom if status.bottom_ok else None),

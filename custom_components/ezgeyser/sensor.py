@@ -89,7 +89,7 @@ SENSORS: tuple[EzGeyserSensorDescription, ...] = (
         value_fn=lambda coordinator: SOURCE_CODES.get(coordinator.data.source, "unknown"),
         attributes_fn=lambda status: {"source_code": status.source},
     ),
-    # A level changes rarely, so it keeps history small; the dBm reading is a separate sensor, disabled by default.
+    # The level stores no raw RSSI attribute; the rounded dBm reading is separate and disabled by default.
     EzGeyserSensorDescription(
         key="network_wifi_signal",
         translation_key="network_wifi_signal",
@@ -106,7 +106,7 @@ SENSORS: tuple[EzGeyserSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda coordinator: coordinator.data.rssi,
+        value_fn=lambda coordinator: coordinator.wifi_rssi,
     ),
     # The firmware's number as sent: its unit is unverified, so it has none, and no statistics.
     EzGeyserSensorDescription(

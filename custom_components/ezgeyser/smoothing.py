@@ -1,4 +1,4 @@
-"""Steadies the 1-second tank temperatures, so they change, and Recorder stores a row, only as the water heats or cools.
+"""Steadies the 1-second tank temperatures and rounds Wi-Fi RSSI to reduce history churn.
 
 A geyser's readings scatter about 0.2 °C around the real temperature, with single-second jumps of over 1 °C. Each
 reading goes through a median that drops one-off jumps, then an average weighted by the time between readings, and the
@@ -18,6 +18,9 @@ TIME_CONSTANT: Final = 10.0
 DEADBAND: Final = 0.2
 # Seconds without a reading after which the filter starts over, instead of mixing in old readings.
 STALE_AFTER: Final = 30.0
+# dBm; round RSSI to these steps, with a buffer beyond each midpoint to avoid boundary chatter.
+RSSI_STEP: Final = 5
+RSSI_HYSTERESIS: Final = 1
 
 
 class TemperatureFilter:
@@ -49,3 +52,22 @@ class TemperatureFilter:
     def reset(self) -> None:
         self._recent.clear()
         self._average = self.value = None
+
+
+class WifiRssiFilter:
+    """Round RSSI to 5 dBm steps, holding the value through small fluctuations at a step's boundary."""
+
+    def __init__(self) -> None:
+        self._at = 0.0
+        self.value: int | None = None
+
+    def update(self, reading: int | None, at: float) -> int | None:
+        """A missing reading is unknown at once; after a long gap, start with the new reading."""
+        if reading is None or at - self._at > STALE_AFTER:
+            self.value = None
+        if reading is None:
+            return None
+        self._at = at
+        if self.value is None or abs(reading - self.value) >= RSSI_STEP / 2 + RSSI_HYSTERESIS:
+            self.value = round(reading / RSSI_STEP) * RSSI_STEP
+        return self.value

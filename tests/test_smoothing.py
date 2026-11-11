@@ -1,4 +1,4 @@
-from custom_components.ezgeyser.smoothing import STALE_AFTER, TemperatureFilter
+from custom_components.ezgeyser.smoothing import STALE_AFTER, TemperatureFilter, WifiRssiFilter
 
 
 def _feed(readings: list[float | None], start: float = 1000.0) -> list[float | None]:
@@ -38,3 +38,20 @@ def test_after_a_long_gap_the_next_reading_shows_as_it_is() -> None:
     smoothed.update(43.1, 1000.0)
 
     assert smoothed.update(47.5, 1000.0 + STALE_AFTER + 1) == 47.5
+
+
+def test_wifi_rounding_holds_through_boundary_noise_and_follows_a_larger_change() -> None:
+    smoothed = WifiRssiFilter()
+    readings = [-64, -63, -62, -63, -62, -61, -62, -63, -62, -64, -81]
+
+    assert [smoothed.update(reading, 1000.0 + second) for second, reading in enumerate(readings)] == [
+        -65, -65, -65, -65, -65, -60, -60, -60, -60, -65, -80,
+    ]  # fmt: skip
+
+
+def test_wifi_rounding_resets_after_a_missing_reading_or_long_gap() -> None:
+    smoothed = WifiRssiFilter()
+    assert smoothed.update(-64, 1000.0) == -65
+    assert smoothed.update(None, 1001.0) is None
+    assert smoothed.update(-62, 1002.0) == -60
+    assert smoothed.update(-63, 1002.0 + STALE_AFTER + 1) == -65

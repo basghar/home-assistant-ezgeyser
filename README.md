@@ -99,7 +99,7 @@ For a geyser named **Kitchen**:
 | `binary_sensor.kitchen_device_clock` | **Problem** / **OK**: whether the geyser's clock is off; see [Next scheduled event](#next-scheduled-event). |
 | `sensor.kitchen_temperature_top_raw` | Disabled by default. The top sensor's reading every second, unsmoothed. |
 | `sensor.kitchen_temperature_bottom_raw` | Disabled by default. The bottom sensor's reading every second, unsmoothed. |
-| `sensor.kitchen_network_wi_fi_rssi` | Disabled by default. The Wi-Fi signal in dBm, which changes almost every second. |
+| `sensor.kitchen_network_wi_fi_rssi` | Disabled by default. The Wi-Fi signal rounded to 5 dBm steps; see [Wi-Fi history](#wi-fi-history). |
 
 The labels are for display. In automations and templates, binary sensors are `on` (the first label) or `off`, the
 heating source is `gas`, `electric`, `hybrid` or `unknown`, and the Wi-Fi signal is `excellent`, `good`, `fair` or
@@ -225,11 +225,21 @@ temperatures are therefore smoothed: a median of the last 5 readings drops one-o
 the scatter, and the shown value changes only once that average moves 0.2 °C. That brings each sensor down to about
 5 to 15 history rows an hour while the water cools or sits idle, and a few a minute while it heats.
 
-- A real change shows within about 30 seconds, and the shown value can be up to 0.2 °C from the average. Nothing else
-  is smoothed.
+- A real change shows within about 30 seconds, and the shown value can be up to 0.2 °C from the average.
 - A sensor fault shows as unknown at once. After 30 seconds without a reading, smoothing starts over.
 - For every reading, enable **Temperature top raw** or **Temperature bottom raw** (**Settings > Devices > your geyser
   > entities not shown**). Each stores about 2,600 history rows an hour while enabled.
+
+### Wi-Fi history
+
+**Network Wi-Fi signal**, used by the card, stores only the level (`excellent`, `good`, `fair` or `weak`), with no
+numerical RSSI attribute. It changes only when the signal crosses one of the level thresholds.
+
+The separate **Network Wi-Fi RSSI** sensor is disabled by default. If enabled, its value is rounded to 5 dBm steps
+(for example, −64 dBm becomes −65 dBm). A 1 dBm buffer beyond each rounding midpoint prevents small fluctuations
+from flipping between adjacent steps: a value of −65 stays there through −62, then changes to −60 at −61. These
+rounded values are what history records. A missing reading becomes unknown immediately, and after 30 seconds without
+a reading the rounding starts over. The level sensor still uses the original signal thresholds.
 
 ### Next scheduled event
 
