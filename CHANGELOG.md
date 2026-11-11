@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Card: the Wi-Fi icon sits 2 units higher in its 24-unit box, so its dot rests on the level word's baseline, level
+  with the cloud; it sat low. The same in the Android app.
+
 ## 0.6.1 (2026-11-11)
 
 - Card: the Wi-Fi icon lights 3 arcs for Excellent, 2 for Good, 1 for Fair and only the dot, in amber, for Weak; all

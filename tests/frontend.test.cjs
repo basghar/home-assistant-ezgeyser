@@ -223,7 +223,7 @@ test('the Wi-Fi icon always draws the dot and three arcs, lighting 3, 2, 1 or no
   const {api}=setup();
   for (const [level,lit] of [['excellent',3],['good',2],['fair',1],['weak',0]]) {
     const svg=api.wifiIcon(level);
-    assert.match(svg,/<circle cx="12" cy="18.5" r="1.6" fill="currentColor"\/>/);
+    assert.match(svg,/<circle cx="12" cy="16.5" r="1.6" fill="currentColor"\/>/);
     assert.equal((svg.match(/stroke="currentColor"/g)||[]).length,lit);assert.equal((svg.match(/stroke="var\(--wifi-off\)"/g)||[]).length,3-lit);
   }
   assert.match(api.STYLE,/--wifi-off:#CFCDD6/);assert.match(api.STYLE,/--wifi-off:#46454C/);

@@ -34,12 +34,12 @@ function icon(name) {
 }
 // The Wi-Fi level (the integration's enum states), the word the footer shows, and how many arcs are lit, as in the app.
 const WIFI = {excellent:['Excellent',3], good:['Good',2], fair:['Fair',1], weak:['Weak',0]};
-const WIFI_ARCS = ['M8.82 15.32A4.5 4.5 0 0 1 15.18 15.32','M6.34 12.84A8 8 0 0 1 17.66 12.84','M3.87 10.37A11.5 11.5 0 0 1 20.13 10.37'];
+const WIFI_ARCS = ['M8.82 13.32A4.5 4.5 0 0 1 15.18 13.32','M6.34 10.84A8 8 0 0 1 17.66 10.84','M3.87 8.37A11.5 11.5 0 0 1 20.13 8.37'];
 // The dot and every arc are always drawn: the lit ones in the item's colour, the rest in the inactive-arc token. Weak
 // lights the dot alone, in the warning colour, so it still reads as Wi-Fi.
 function wifiIcon(level) {
   const lit = WIFI[level]?.[1] ?? 0;
-  return `<svg class="icon wifi-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="18.5" r="1.6" fill="currentColor"/>${WIFI_ARCS.map((d,i) => `<path d="${d}" stroke="${i < lit ? 'currentColor' : 'var(--wifi-off)'}"/>`).join('')}</svg>`;
+  return `<svg class="icon wifi-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="16.5" r="1.6" fill="currentColor"/>${WIFI_ARCS.map((d,i) => `<path d="${d}" stroke="${i < lit ? 'currentColor' : 'var(--wifi-off)'}"/>`).join('')}</svg>`;
 }
 // What the badge and the footer's end say about the connection: a missing or unknown entity is neither shown nor an issue.
 function connectivity(shown) {
