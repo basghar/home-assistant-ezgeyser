@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3 (2026-11-11)
+
+- Open the corresponding entity details from individual card readings and each gas or electric sensor.
+
 ## 0.5.2 (2026-11-11)
 
 - Show the next scheduled event on the overview card using a read-only timestamp sensor.

@@ -201,6 +201,8 @@ use your Home Assistant units. The same example is in [`dashboards/geyser.yaml`]
 - The scan asks only devices that announced themselves on the network, one at a time, at most 8 per scan. It never
   tries every address in your network.
 
+Select a temperature, target, Boost, heating source, or scheduled event on the card to open its entity details and history. Select the left or right half of a gas or electric icon to open the corresponding flame or element sensor.
+
 The card shows **Next Scheduled Event** beneath the target (and Boost when active). Schedules are read once a minute.
 The calculation follows the Android app: the device clock is treated as local wall time, and weekday flags are assumed
 to start on Sunday; that weekday order has not been verified. Home Assistant must use the same local timezone as the

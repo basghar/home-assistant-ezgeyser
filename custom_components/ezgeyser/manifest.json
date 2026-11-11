@@ -10,6 +10,6 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/basghar/home-assistant-ezgeyser/issues",
   "requirements": [],
-  "version": "0.5.2",
+  "version": "0.5.3",
   "zeroconf": [{ "type": "_http._tcp.local.", "name": "ezgeyser*" }]
 }

@@ -6,7 +6,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname,'../custom_components/ezgeyser/www/ezgeyser-card.js'),'utf8');
 function setup(config = {}) {
   class Element {
-    attachShadow() { this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:() => this.card = {innerHTML:'',addEventListener(){}}}; }
+    attachShadow() { this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:() => this.card = {innerHTML:'',addEventListener(type,fn){this[type]=fn}}}; }
     toggleAttribute() {}
     dispatchEvent(event) { this.event = event; }
   }
@@ -39,7 +39,7 @@ test('next scheduled event appears after target and boost',() => {
 });
 test('sensor faults stay faults and mask invalid numerical readings',() => {
   const t=setup();const html=t.update({top_ok:'off',top:'unknown'});
-  assert.match(html,/Top sensor/);assert.doesNotMatch(html,/Status unknown/);assert.match(html,/half fault/);assert.match(html,/fault-text">—/);
+  assert.match(html,/Top sensor/);assert.doesNotMatch(html,/Status unknown/);assert.match(html,/half entity-button fault/);assert.match(html,/fault-text">—/);
   assert.match(t.update({bottom_ok:'off',bottom:'unknown'}),/2 issues/);
 });
 test('offline uses session cache and a fresh page has no invented readings',() => {
@@ -114,4 +114,27 @@ test('switching devices clears cached readings, and a registry failure is explic
   t.card.setConfig({device_id:'another'});assert.equal(t.card._last,null);
   t.card._registry=undefined;t.card.hass={...t.card._hass,callWS:async()=>{throw Error('disconnected')}};
   await new Promise(resolve=>setImmediate(resolve));assert.match(t.html(),/Registry unavailable/);
+});
+
+test('individual readings open their corresponding entity, including renamed entities',()=>{
+  const t=setup({main:'bottom'});
+  for (const key of ['top','bottom','target','boost','next_event','source','burner_left','burner_right','element_1','element_2']) {
+    t.card._ids[key] = `${['boost','burner_left','burner_right','element_1','element_2'].includes(key) ? 'binary_sensor' : 'sensor'}.renamed_${key}`;
+    t.card._hass.states[t.card._ids[key]] = {state:'unknown',attributes:{}};
+    t.card.card.click({target:{closest:()=>({dataset:{entity:key}})}});
+    assert.equal(t.card.event.detail.entityId,t.card._ids[key]);
+  }
+  t.card.event=undefined;
+  t.card.card.click({target:{closest:()=>null}});
+  assert.equal(t.card.event,undefined);
+});
+
+test('gas and electric indicators expose independent sensor buttons',()=>{
+  const t=setup();
+  for (const key of ['burner_left','burner_right','element_1','element_2']) {
+    assert.match(t.html(),new RegExp(`<button class="entity-button heat-button" data-entity="${key}"`));
+  }
+  const single=setup({element_count:1});
+  assert.match(single.html(),/data-entity="element_1"/);
+  assert.doesNotMatch(single.html(),/data-entity="element_2"/);
 });
