@@ -14,15 +14,16 @@
 <body>
 <div id="stage"></div>
 <script>
-// Every reading below is made up. Heating states have not been captured from a real geyser.
+// Every reading below is made up. Heating states have not been captured from a real geyser. Event times are in
+// Asia/Karachi, the time zone capture.sh renders in; Guest Bathroom has no schedule, so its event is unavailable.
 const GEYSERS = {
-  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'65'}},
-  bathroom: {name:'Ground Floor Bathroom', values:{top:'44.6', bottom:'38.9', target:'60', burner_left:'on', burner_right:'on', boost:'on'}},
-  upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'55', source:'hybrid', source_code:3, element_1:'on'}},
+  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'65', next_event:'2026-11-12T06:00:00+05:00'}},
+  bathroom: {name:'Ground Floor Bathroom', values:{top:'44.6', bottom:'38.9', target:'60', burner_left:'on', burner_right:'on', boost:'on', next_event:'2026-11-11T21:30:00+05:00'}},
+  upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'55', source:'hybrid', source_code:3, element_1:'on', next_event:'2026-11-12T05:30:00+05:00'}},
   guest: {name:'Guest Bathroom', values:{top:'unknown', top_ok:'off', bottom:'41.3', target:'0'}},
-  garage: {name:'Garage', values:{top:'36.4', bottom:'33.0', target:'0'}, unreachable:true},
-  laundry: {name:'Laundry', values:{top:'42.0', bottom:'40.6', target:'50', element_1:'on', element_2:'on'}},
-  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on'}},
+  garage: {name:'Garage', values:{top:'36.4', bottom:'33.0', target:'0', next_event:'2026-11-12T06:30:00+05:00'}, unreachable:true},
+  laundry: {name:'Laundry', values:{top:'42.0', bottom:'40.6', target:'50', element_1:'on', element_2:'on', next_event:'2026-11-12T07:00:00+05:00'}},
+  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on', next_event:'2026-11-11T22:00:00+05:00'}},
 };
 const SCENES = {
   'dashboard-light': {dark:false, columns:[340,340], cards:['kitchen','bathroom','upstairs','guest']},
@@ -35,8 +36,8 @@ const SCENES = {
   'narrow': {dark:false, columns:[200,200,200], cards:['kitchen','laundry','roof']},
 };
 const DEFAULTS = {source:'gas', source_code:1, top_ok:'on', bottom_ok:'on', burner_left:'off', burner_right:'off',
-  element_1:'off', element_2:'off', boost:'off'};
-const isSensor = key => ['top','bottom','target','source'].includes(key);
+  element_1:'off', element_2:'off', boost:'off', next_event:'unknown'};
+const isSensor = key => ['top','bottom','target','source','next_event'].includes(key);
 
 function states(id, values, override) {
   const all = {...DEFAULTS, ...values};

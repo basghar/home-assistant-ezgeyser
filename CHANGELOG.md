@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.4 (2026-11-11)
+
+- Smooth the top and bottom tank temperatures: a median of the last 5 readings, a 10-second average and a 0.2 °C
+  deadband. History drops from about 2,600 rows an hour per sensor to about 5 to 15 while cooling or idle; the card
+  still updates every second and follows a heat-up within about 30 seconds. Other entities are unchanged.
+- Add **Temperature top raw** and **Temperature bottom raw**, disabled by default, with every unsmoothed reading.
+- Update the README screenshots to show the next scheduled event.
+
 ## 0.5.3 (2026-11-11)
 
 - Open the corresponding entity details from individual card readings and each gas or electric sensor.

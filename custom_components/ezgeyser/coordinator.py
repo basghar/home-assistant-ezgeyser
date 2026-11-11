@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 import logging
+import time
 from typing import Any, override
 
 from homeassistant.config_entries import ConfigEntry
@@ -19,6 +20,7 @@ from .const import (
     TOLERATED_FAILURES,
 )
 from .schedule import next_event, parse_schedules
+from .smoothing import TemperatureFilter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +48,9 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
         self._schedules_due = utcnow()
         self.schedules: list[dict[str, Any]] | None = None
         self.next_event: datetime | None = None
+        # The smoothed tank temperatures the temperature sensors show, by sensor key; `data` keeps the raw readings.
+        self._filters = {"temperature_top": TemperatureFilter(), "temperature_bottom": TemperatureFilter()}
+        self.temperatures: dict[str, float | None] = dict.fromkeys(self._filters)
 
     @override
     async def _async_setup(self) -> None:
@@ -74,6 +79,12 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
             except GeyserError:
                 self.schedules = None
         self.next_event = next_event(self.schedules, status.clock, local_now()) if self.schedules is not None else None
+        at = time.monotonic()
+        for key, reading in (
+            ("temperature_top", status.top if status.top_ok else None),
+            ("temperature_bottom", status.bottom if status.bottom_ok else None),
+        ):
+            self.temperatures[key] = self._filters[key].update(reading, at)
         self._failures = 0
         self.update_interval = POLL_INTERVAL
         return status

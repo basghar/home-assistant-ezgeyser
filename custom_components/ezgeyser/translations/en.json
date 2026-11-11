@@ -71,6 +71,12 @@
       "temperature_bottom": {
         "name": "Temperature bottom"
       },
+      "temperature_top_raw": {
+        "name": "Temperature top raw"
+      },
+      "temperature_bottom_raw": {
+        "name": "Temperature bottom raw"
+      },
       "temperature_target": {
         "name": "Temperature target"
       },

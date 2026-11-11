@@ -1,4 +1,7 @@
-"""Temperature and heating-source sensors, from `/quickStatus`."""
+"""Temperature and heating-source sensors, from `/quickStatus`.
+
+The tank temperatures are smoothed (see `smoothing.py`); the raw readings are separate sensors, disabled by default.
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -30,11 +33,13 @@ SOURCE_OPTIONS = ["gas", "electric", "hybrid", "unknown"]
 
 @dataclass(frozen=True, kw_only=True)
 class EzGeyserSensorDescription(SensorEntityDescription):
-    value_fn: Callable[[QuickStatus], StateType]
+    value_fn: Callable[[EzGeyserCoordinator], StateType]
     attributes_fn: Callable[[QuickStatus], dict[str, Any]] | None = None
 
 
-def _temperature(key: str, value_fn: Callable[[QuickStatus], StateType]) -> EzGeyserSensorDescription:
+def _temperature(
+    key: str, value_fn: Callable[[EzGeyserCoordinator], StateType], *, enabled: bool = True
+) -> EzGeyserSensorDescription:
     return EzGeyserSensorDescription(
         key=key,
         translation_key=key,
@@ -42,21 +47,33 @@ def _temperature(key: str, value_fn: Callable[[QuickStatus], StateType]) -> EzGe
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
+        entity_registry_enabled_default=enabled,
         value_fn=value_fn,
     )
 
 
 SENSORS: tuple[EzGeyserSensorDescription, ...] = (
     # A reading is meaningful only while its sensor reports OK; otherwise the state is unknown, as in the Android app.
-    _temperature("temperature_top", lambda status: status.top if status.top_ok else None),
-    _temperature("temperature_bottom", lambda status: status.bottom if status.bottom_ok else None),
-    _temperature("temperature_target", lambda status: status.target_temp),
+    _temperature("temperature_top", lambda coordinator: coordinator.temperatures["temperature_top"]),
+    _temperature("temperature_bottom", lambda coordinator: coordinator.temperatures["temperature_bottom"]),
+    # Every 1-second reading, unsmoothed. Disabled by default: enabled, each stores about 2,600 history rows an hour.
+    _temperature(
+        "temperature_top_raw",
+        lambda coordinator: coordinator.data.top if coordinator.data.top_ok else None,
+        enabled=False,
+    ),
+    _temperature(
+        "temperature_bottom_raw",
+        lambda coordinator: coordinator.data.bottom if coordinator.data.bottom_ok else None,
+        enabled=False,
+    ),
+    _temperature("temperature_target", lambda coordinator: coordinator.data.target_temp),
     EzGeyserSensorDescription(
         key="heating_source",
         translation_key="heating_source",
         device_class=SensorDeviceClass.ENUM,
         options=SOURCE_OPTIONS,
-        value_fn=lambda status: SOURCE_CODES.get(status.source, "unknown"),
+        value_fn=lambda coordinator: SOURCE_CODES.get(coordinator.data.source, "unknown"),
         attributes_fn=lambda status: {"source_code": status.source},
     ),
 )
@@ -95,7 +112,7 @@ class EzGeyserSensor(EzGeyserEntity, SensorEntity):
     @property
     @override
     def native_value(self) -> StateType:
-        return self.entity_description.value_fn(self.coordinator.data)
+        return self.entity_description.value_fn(self.coordinator)
 
     @property
     @override

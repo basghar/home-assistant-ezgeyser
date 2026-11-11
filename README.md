@@ -80,9 +80,9 @@ For a geyser named **Kitchen**:
 
 | Entity ID | Shows |
 |---|---|
-| `sensor.kitchen_temperature_top` | Top tank sensor, °C. Unknown while the sensor reports a fault. |
+| `sensor.kitchen_temperature_top` | Top tank sensor, °C, [smoothed](#smoothed-temperatures). Unknown while the sensor reports a fault. |
 | `binary_sensor.kitchen_temperature_top_ok` | **OK** / **Fault**: whether the top sensor reading is valid. |
-| `sensor.kitchen_temperature_bottom` | Bottom tank sensor, °C. Unknown while the sensor reports a fault. |
+| `sensor.kitchen_temperature_bottom` | Bottom tank sensor, °C, [smoothed](#smoothed-temperatures). Unknown while the sensor reports a fault. |
 | `binary_sensor.kitchen_temperature_bottom_ok` | **OK** / **Fault**: whether the bottom sensor reading is valid. |
 | `sensor.kitchen_temperature_target` | Target temperature of the running timer or preset, °C. 0 most likely means no target. |
 | `binary_sensor.kitchen_burner_left_flame_sensor` | **Flame** / **No flame**: flame sensor 1, at one end of the burner. |
@@ -91,6 +91,8 @@ For a geyser named **Kitchen**:
 | `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2. |
 | `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the selected heating source. |
 | `binary_sensor.kitchen_heating_boost_mode` | **Active** / **Inactive**: boost mode. |
+| `sensor.kitchen_temperature_top_raw` | Disabled by default. The top sensor's reading every second, unsmoothed. |
+| `sensor.kitchen_temperature_bottom_raw` | Disabled by default. The bottom sensor's reading every second, unsmoothed. |
 
 The labels are for display. In automations and templates, binary sensors are `on` (the first label) or `off`, and the
 heating source is `gas`, `electric`, `hybrid` or `unknown`. Only the Gas code is confirmed so far; any other code shows
@@ -109,10 +111,10 @@ seen on a real geyser (see [Entities](#entities)).
 
 | | |
 |---|---|
-| ![Kitchen geyser idle on gas: 51.8 °C top, 47.2 °C bottom, target 65 °C, Sensors OK](assets/screenshots/idle.png) | ![Ground Floor Bathroom heating on gas with both burner sides lit and Boost on, dark theme](assets/screenshots/gas-heating.png) |
-| **Idle.** Top reading large, bottom below it, the target on the right, and the selected source in the footer. | **Heating on gas, dark theme.** Both burner sides report flame, and Boost is active. |
-| ![Upstairs geyser heating with electric element 1 on](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault: a dash instead of the top reading and a hatched top half](assets/screenshots/sensor-fault.png) |
-| **Heating on an electric element.** The bolt lights, and the bar shows which of the two elements is on. | **Sensor fault, dark theme.** The faulty reading shows a dash, and the badge names the sensor. |
+| ![Kitchen geyser idle on gas: 51.8 °C top, 47.2 °C bottom, target 65 °C, next scheduled event Nov 12 at 6:00 AM, Sensors OK](assets/screenshots/idle.png) | ![Ground Floor Bathroom heating on gas with both burner sides lit and Boost on, dark theme](assets/screenshots/gas-heating.png) |
+| **Idle.** Top reading large, bottom below it, the target and next scheduled event on the right, and the selected source in the footer. | **Heating on gas, dark theme.** Both burner sides report flame, and Boost is active. |
+| ![Upstairs geyser heating with electric element 1 on](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault: a dash instead of the top reading, a hatched top half, and an unavailable next scheduled event](assets/screenshots/sensor-fault.png) |
+| **Heating on an electric element.** The bolt lights, and the bar shows which of the two elements is on. | **Sensor fault, dark theme.** The faulty reading shows a dash, and the badge names the sensor. With no schedule, the next event shows **Unavailable**. |
 | ![Garage geyser unreachable, showing muted last known values and when they were last available](assets/screenshots/unreachable.png) | |
 | **Unreachable.** Muted last known values and when Home Assistant last had them. | |
 
@@ -200,6 +202,22 @@ use your Home Assistant units. The same example is in [`dashboards/geyser.yaml`]
   the address is fixed.
 - The scan asks only devices that announced themselves on the network, one at a time, at most 8 per scan. It never
   tries every address in your network.
+
+### Smoothed temperatures
+
+The tank sensors' readings scatter about 0.2 °C around the real temperature, with single-second jumps of over 1 °C, so
+unsmoothed they change almost every second and store about 2,600 history rows an hour each. The top and bottom
+temperatures are therefore smoothed: a median of the last 5 readings drops one-off jumps, a 10-second average removes
+the scatter, and the shown value changes only once that average moves 0.2 °C. That brings each sensor down to about
+5 to 15 history rows an hour while the water cools or sits idle, and a few a minute while it heats.
+
+- The card and the entities still update every second. A real change shows within about 30 seconds, and the shown
+  value can be up to 0.2 °C from the average.
+- A sensor fault shows as unknown at once. After 30 seconds without a reading, smoothing starts over.
+- Only the two tank temperatures are smoothed. The target, heating source, scheduled event and every on/off sensor
+  show what the geyser reports.
+- For every reading, enable **Temperature top raw** or **Temperature bottom raw** (**Settings > Devices > your geyser
+  > entities not shown**). Each stores about 2,600 history rows an hour while enabled.
 
 Select a temperature, target, Boost, heating source, or scheduled event on the card to open its entity details and history. Select the left or right half of a gas or electric icon to open the corresponding flame or element sensor.
 
