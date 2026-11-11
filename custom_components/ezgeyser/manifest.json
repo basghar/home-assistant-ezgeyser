@@ -1,7 +1,7 @@
 {
   "domain": "ezgeyser",
   "name": "ezGeyser Direct",
-  "after_dependencies": ["dhcp", "frontend", "lovelace", "zeroconf"],
+  "after_dependencies": ["dhcp", "frontend", "http", "lovelace", "zeroconf"],
   "codeowners": ["@basghar"],
   "config_flow": true,
   "dhcp": [{ "hostname": "ezgeyser-*" }],
