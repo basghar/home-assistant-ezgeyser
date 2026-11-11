@@ -1,0 +1,32 @@
+# Tool settings for the custom integration in `custom_components/ezgeyser` and its tests in `tests/`.
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+src = ["custom_components", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "PT", "RUF", "S", "ASYNC", "LOG", "G", "T20", "TID",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"tests/test_guard.py" = ["RUF001"]  # lookalike characters, on purpose
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["homeassistant"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["custom_components/ezgeyser"]
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers -p no:cacheprovider"

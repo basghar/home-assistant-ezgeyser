@@ -1,0 +1,113 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add an ezGeyser",
+        "description": "Enter the geyser's IP address, or leave it empty to search your network for geysers.",
+        "data": {
+          "host": "IP address"
+        },
+        "data_description": {
+          "host": "A private IPv4 address such as 192.168.1.50, or a .local name. Leave empty to search."
+        }
+      },
+      "pick_device": {
+        "title": "Geysers found",
+        "data": {
+          "device": "Geyser"
+        }
+      },
+      "name": {
+        "title": "Name the geyser",
+        "description": "Found {hostname} at {host}.",
+        "data": {
+          "name": "Name"
+        },
+        "data_description": {
+          "name": "Used for the device and as the start of every entity ID: Kitchen gives sensor.kitchen_temperature_top."
+        }
+      },
+      "discovery_confirm": {
+        "title": "ezGeyser discovered",
+        "description": "{hostname} was found at {host}. Give it a name to add it.",
+        "data": {
+          "name": "Name"
+        },
+        "data_description": {
+          "name": "Used for the device and as the start of every entity ID: Kitchen gives sensor.kitchen_temperature_top."
+        }
+      },
+      "reconfigure": {
+        "title": "Change the geyser's address",
+        "data": {
+          "host": "IP address"
+        },
+        "data_description": {
+          "host": "The new address. It must be the same geyser."
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Use a private IPv4 address or a .local name, without http://, a port or a path.",
+      "cannot_connect": "The geyser does not answer at this address.",
+      "not_ezgeyser": "Something answers at this address, but it is not an ezGeyser.",
+      "no_devices_found": "No geysers were found that are not added yet. Enter the address instead."
+    },
+    "abort": {
+      "already_configured": "This geyser is already added. Its address has been updated if it changed.",
+      "already_in_progress": "This geyser is already being added.",
+      "cannot_connect": "The geyser does not answer.",
+      "not_ezgeyser": "This device is not an ezGeyser.",
+      "wrong_device": "A different geyser answers at this address.",
+      "reconfigure_successful": "The address has been changed."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature_top": {
+        "name": "Temperature top"
+      },
+      "temperature_bottom": {
+        "name": "Temperature bottom"
+      },
+      "temperature_target": {
+        "name": "Temperature target"
+      },
+      "heating_source": {
+        "name": "Heating source"
+      }
+    },
+    "binary_sensor": {
+      "temperature_top_ok": {
+        "name": "Temperature top OK"
+      },
+      "temperature_bottom_ok": {
+        "name": "Temperature bottom OK"
+      },
+      "heating_burner_1": {
+        "name": "Heating burner 1"
+      },
+      "heating_burner_2": {
+        "name": "Heating burner 2"
+      },
+      "heating_element_1": {
+        "name": "Heating element 1"
+      },
+      "heating_element_2": {
+        "name": "Heating element 2"
+      },
+      "heating_boost_mode": {
+        "name": "Heating boost mode"
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "The geyser does not answer: {reason}"
+    },
+    "wrong_device": {
+      "message": "A different device answers at the geyser's address. Reconfigure it with the right address."
+    }
+  }
+}

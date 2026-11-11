@@ -1,0 +1,35 @@
+{
+  "entity": {
+    "sensor": {
+      "temperature_target": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "heating_source": {
+        "default": "mdi:swap-horizontal"
+      }
+    },
+    "binary_sensor": {
+      "temperature_top_ok": {
+        "default": "mdi:thermometer-check"
+      },
+      "temperature_bottom_ok": {
+        "default": "mdi:thermometer-check"
+      },
+      "heating_burner_1": {
+        "default": "mdi:fire"
+      },
+      "heating_burner_2": {
+        "default": "mdi:fire"
+      },
+      "heating_element_1": {
+        "default": "mdi:heating-coil"
+      },
+      "heating_element_2": {
+        "default": "mdi:heating-coil"
+      },
+      "heating_boost_mode": {
+        "default": "mdi:rocket-launch"
+      }
+    }
+  }
+}

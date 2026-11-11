@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+
+# Local research notes and agent tooling for the wider ezGeyser project; not part of this repository.
+/docs/
+/.claude/
+/skills-lock.json
