@@ -1,4 +1,4 @@
-/* ezGeyser overview card. No dependencies, network calls or device writes. */
+/* ezGeyser overview card. No dependencies or direct device requests/writes. */
 const FIELDS = {
   top: 'temperature_top', bottom: 'temperature_bottom', target: 'temperature_target',
   source: 'heating_source', top_ok: 'temperature_top_ok', bottom_ok: 'temperature_bottom_ok',
@@ -77,36 +77,107 @@ class EzGeyserCard extends HTMLElement {
     });
   }
   setConfig(config) {
-    if (!/^sensor\..+_temperature_(top|bottom)$/.test(config.entity || '') && !config.entities?.top) {
-      throw new Error('Set entity to this geyser’s top/bottom temperature sensor, or provide entities.top.');
-    }
+    if (config.device_id !== undefined && typeof config.device_id !== 'string') throw new Error('device_id must be a Home Assistant device ID');
+    if (config.device_id === undefined && !config.entity && !config.entities?.top) throw new Error('Select an ezGeyser device');
     if (config.main && !['top','bottom'].includes(config.main)) throw new Error('main must be top or bottom');
     if (config.element_count !== undefined && ![1,2].includes(config.element_count)) throw new Error('element_count must be 1 or 2');
     if (config.theme && !['auto','light','dark'].includes(config.theme)) throw new Error('theme must be auto, light or dark');
     for (const [key,id] of Object.entries(config.entities || {})) {
       if (!(key in FIELDS) || typeof id !== 'string' || !id.startsWith(`${BINARY.has(key) ? 'binary_sensor' : 'sensor'}.`)) throw new Error(`Invalid entity mapping: ${key}`);
     }
-    const prefix = config.entity?.replace(/^sensor\./,'').replace(/_temperature_(top|bottom)$/,'');
     this._config = {...config};
-    this._ids = Object.fromEntries(Object.entries(FIELDS).map(([key,suffix]) => [key, config.entities?.[key] || (prefix ? `${BINARY.has(key) ? 'binary_sensor' : 'sensor'}.${prefix}_${suffix}` : null)]));
-    this._last = null; this._signature = null; this._render();
+    this._ids = Object.fromEntries(Object.keys(FIELDS).map(key => [key,config.device_id !== undefined ? null : config.entities?.[key] || null]));
+    this._last = null; this._signature = null;
+    this._resolveDevice(); this._loadRegistry(); this._render();
   }
-  set hass(value) { this._hass = value; this._render(); }
+  set hass(value) { this._hass = value; this._loadRegistry(); this._subscribeRegistry(); this._render(); }
   getCardSize() { return 3; }
   getGridOptions() { return {columns:12,rows:'auto',min_columns:6}; }
-  static getConfigElement() { return document.createElement('ezgeyser-card-editor'); }
+  static getConfigForm() {
+    return {
+      schema: [
+        {name:'device_id',required:true,selector:{device:{filter:[{integration:'ezgeyser'}]}}},
+        {name:'name',selector:{text:{}}},
+        {name:'main',selector:{select:{options:['top','bottom']}}},
+        {name:'element_count',selector:{number:{min:1,max:2,step:1,mode:'box'}}},
+        {name:'theme',selector:{select:{options:['auto','light','dark']}}},
+      ],
+      computeLabel: field => ({device_id:'Geyser',name:'Name (optional)',main:'Main temperature',element_count:'Electric elements',theme:'Theme'})[field.name],
+      assertConfig: config => {
+        if (config.entity || config.entities) throw new Error('This legacy card uses entity mappings. Use YAML, or replace them with device_id to use the device selector.');
+      },
+    };
+  }
   static async getStubConfig(hass) {
-    if (hass.callWS) {
-      try {
-        const entries = await hass.callWS({type:'config/entity_registry/list'});
-        const first = entries.find(e => e.platform === 'ezgeyser' && e.unique_id?.endsWith('_temperature_top') && !e.disabled_by);
-        if (first) return registryConfig(entries,first.entity_id);
-      } catch { /* Fall back to state IDs when registry access is unavailable. */ }
+    try {
+      const entries = await hass.callWS({type:'config/entity_registry/list'});
+      const first = entries.find(e => e.platform === 'ezgeyser' && e.device_id && !e.disabled_by);
+      return {device_id:first?.device_id || ''};
+    } catch { return {device_id:''}; }
+  }
+  connectedCallback() { this._loadRegistry(); this._subscribeRegistry(); }
+  disconnectedCallback() {
+    this._registryEpoch = (this._registryEpoch || 0) + 1;
+    this._registryUnsubscribe?.();
+    this._registryUnsubscribe = undefined;
+    this._registrySubscriptionPending = false;
+    this._registryLoading = false;
+    this._registry = undefined;
+  }
+  async _loadRegistry() {
+    if (!this._hass?.callWS || this._registryLoading || this._registry !== undefined) return;
+    this._registryLoading = true;
+    this._registryDirty = false;
+    const epoch = this._registryEpoch || 0;
+    try {
+      const entries = await this._hass.callWS({type:'config/entity_registry/list'});
+      if (epoch !== (this._registryEpoch || 0)) return;
+      this._registry = entries;
+      this._registryError = false;
+    } catch {
+      if (epoch !== (this._registryEpoch || 0)) return;
+      this._registry = [];
+      this._registryError = true;
     }
-    return {entity: Object.keys(hass.states).find(id => /^sensor\..+_temperature_top$/.test(id)) || 'sensor.kitchen_temperature_top'};
+    this._registryLoading = false;
+    this._resolveDevice();
+    this._render();
+    if (this._registryDirty) { this._registry = undefined; this._loadRegistry(); }
+  }
+  _subscribeRegistry() {
+    const connection = this._hass?.connection;
+    if (!this.isConnected || !connection?.subscribeMessage || this._registryUnsubscribe || this._registrySubscriptionPending) return;
+    this._registrySubscriptionPending = true;
+    const epoch = this._registryEpoch || 0;
+    connection.subscribeMessage(() => {
+      this._registryDirty = true;
+      this._registry = undefined;
+      this._loadRegistry();
+    },{type:'subscribe_events',event_type:'entity_registry_updated'}).then(unsubscribe => {
+      if (!this.isConnected || epoch !== (this._registryEpoch || 0)) unsubscribe();
+      else { this._registryUnsubscribe = unsubscribe; this._registrySubscriptionPending = false; }
+    }).catch(() => { this._registrySubscriptionPending = false; });
+  }
+  _resolveDevice() {
+    if (!this._config || this._registry === undefined) return;
+    const config = this._config;
+    // Legacy entity configurations use the registry relationship too. Explicit
+    // mappings remain available for older dashboards, without guessing a prefix.
+    const deviceId = config.device_id || this._registry.find(e => e.entity_id === (config.entities?.top || config.entity) && e.platform === 'ezgeyser')?.device_id;
+    this._deviceId = deviceId;
+    const resolved = deviceEntities(this._registry,deviceId);
+    const ids = Object.fromEntries(Object.keys(FIELDS).map(key => [key,
+      config.device_id !== undefined ? resolved[key] : config.entities?.[key] || resolved[key] || null,
+    ]));
+    if (JSON.stringify(ids) !== JSON.stringify(this._ids)) {
+      this._ids = ids;
+      this._signature = null;
+      // Never display another selected device's cached readings.
+      this._last = null;
+    }
   }
   _moreInfo() {
-    if (!this._config) return;
+    if (!this._config || !this._ids[this._config.main || 'top'] || !this._hass?.states[this._ids[this._config.main || 'top']]) return;
     this.dispatchEvent(new CustomEvent('hass-more-info',{detail:{entityId:this._ids[this._config.main || 'top']},bubbles:true,composed:true}));
   }
   _render() {
@@ -115,7 +186,7 @@ class EzGeyserCard extends HTMLElement {
     const dark = config.theme === 'dark' || (config.theme !== 'light' && Boolean(hass.themes?.darkMode));
     this.toggleAttribute('dark',dark);
     const states = Object.fromEntries(Object.entries(this._ids).map(([key,id]) => [key,hass.states[id]]));
-    const signature = JSON.stringify([dark,config.name,hass.locale,Object.values(states)]);
+    const signature = JSON.stringify([dark,config.name,hass.locale,this._registryError,this._registry === undefined,this._deviceId,hass.devices?.[this._deviceId],Object.values(states)]);
     if (signature === this._signature) return;
     this._signature = signature;
     const required = Object.keys(FIELDS).filter(key => config.element_count !== 1 || key !== 'element_2');
@@ -140,10 +211,11 @@ class EzGeyserCard extends HTMLElement {
     const issues = ['top','bottom'].filter(fault).map(key => `${key === 'top' ? 'Top' : 'Bottom'} sensor`);
     let badge = issues.length > 1 ? `${issues.length} issues` : issues[0] || 'Sensors OK';
     if (unknown) badge = 'Status unknown';
-    if (missing) badge = 'Check entities';
+    if (missing) badge = this._registryError ? 'Registry unavailable' : this._registry === undefined ? 'Loading entities' : 'Check entities';
+    if (config.device_id === '') badge = 'Select geyser';
     if (unreachable) badge = 'Unreachable';
     const warning = missing || unreachable || unknown || issues.length > 0;
-    const name = config.name || hass.devices?.[hass.entities?.[this._ids.top]?.device_id]?.name_by_user || hass.devices?.[hass.entities?.[this._ids.top]?.device_id]?.name || this._ids.top?.replace(/^sensor\./,'').replace(/_temperature_top$/,'').replaceAll('_',' ') || 'Geyser';
+    const name = config.name || hass.devices?.[this._deviceId]?.name_by_user || hass.devices?.[this._deviceId]?.name || this._ids.top?.replace(/^sensor\./,'').replace(/_temperature_top$/,'').replaceAll('_',' ') || 'Geyser';
     const unit = shown[main]?.attributes.unit_of_measurement || '°C';
     const target = numeric(shown.target), noTarget = celsius(shown.target);
     const targetText = target === null ? 'Target unknown' : Math.abs(noTarget) < .01 ? 'No target' : `Target ${new Intl.NumberFormat(hass.locale?.language || 'en',{maximumFractionDigits:1}).format(target)}${shown.target.attributes.unit_of_measurement || '°C'}`;
@@ -167,69 +239,14 @@ class EzGeyserCard extends HTMLElement {
     if (restoreFocus) this._card.querySelector('.card').focus({preventScroll:true});
   }
 }
-// Resolve by registry identity, so selecting a device also works with renamed entities.
-function registryConfig(registry, entity) {
-  const anchor = registry.find(e => e.entity_id === entity && e.platform === 'ezgeyser');
-  if (!anchor) return {entity};
-  const entries = registry.filter(e => e.device_id === anchor.device_id && e.platform === 'ezgeyser');
-  const entities = {};
-  for (const [key,suffix] of Object.entries(FIELDS)) {
-    const match = entries.find(e => e.unique_id?.endsWith(`_${suffix}`));
-    if (match) entities[key] = match.entity_id;
-  }
-  return {entity,entities};
+// Entity IDs and translated names can change; device membership and the
+// integration's stable unique-ID suffix identify each function.
+function deviceEntities(registry, deviceId) {
+  const entries = deviceId ? registry.filter(e => e.device_id === deviceId && e.platform === 'ezgeyser' && !e.disabled_by) : [];
+  return Object.fromEntries(Object.entries(FIELDS).map(([key,suffix]) => [key,
+    entries.find(e => e.unique_id?.endsWith(`_${suffix}`))?.entity_id || null,
+  ]));
 }
-class EzGeyserCardEditor extends HTMLElement {
-  constructor() {
-    super(); this.attachShadow({mode:'open'});
-    this.shadowRoot.addEventListener('change', e => this._change(e));
-  }
-  setConfig(config) { this._config = {...config}; this._render(); }
-  set hass(hass) {
-    this._hass = hass;
-    if (!this._loading && hass.callWS) {
-      this._loading = true;
-      hass.callWS({type:'config/entity_registry/list'}).then(entries => {
-        this._registry = entries; this._render();
-      }).catch(() => { this._registry = []; this._render(); });
-    }
-    this._render();
-  }
-  _change(event) {
-    const key = event.target.name;
-    if (!key) return;
-    const config = {...this._config};
-    if (key === 'entity') {
-      // Discard mappings from the previous device when selecting another geyser.
-      delete config.entities;
-      Object.assign(config,registryConfig(this._registry || [],event.target.value));
-    } else if (key === 'element_count') config[key] = Number(event.target.value);
-    else if (event.target.value) config[key] = event.target.value;
-    else delete config[key];
-    this._config = config;
-    this.dispatchEvent(new CustomEvent('config-changed',{detail:{config},bubbles:true,composed:true}));
-  }
-  _render() {
-    if (!this._config || !this._hass) return;
-    const c = this._config, hass = this._hass;
-    const registered = (this._registry || []).filter(e => e.platform === 'ezgeyser' && e.unique_id?.endsWith('_temperature_top') && !e.disabled_by);
-    const ids = registered.length ? registered.map(e => e.entity_id) : Object.keys(hass.states).filter(id => /^sensor\..+_temperature_top$/.test(id));
-    const selected = c.entities?.top || c.entity;
-    if (selected && !ids.includes(selected)) ids.unshift(selected);
-    const signature = JSON.stringify([c,ids.map(id => [id,hass.states[id]?.attributes.friendly_name])]);
-    if (signature === this._editorSignature) return;
-    this._editorSignature = signature;
-    const option = (value,label,current) => `<option value="${escape(value)}" ${String(value) === String(current) ? 'selected' : ''}>${escape(label)}</option>`;
-    this.shadowRoot.innerHTML = `<style>:host{display:block;color:var(--primary-text-color);font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif)}label{display:grid;gap:6px;margin:0 0 16px;font-size:14px}select,input{box-sizing:border-box;width:100%;min-height:44px;padding:10px;border:1px solid var(--divider-color,#888);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#111);font:inherit}p{font-size:13px;color:var(--secondary-text-color)}</style>
-      <label>Geyser<select name="entity"><option value="" disabled ${selected ? '' : 'selected'}>Select a geyser</option>${ids.map(id => option(id,hass.states[id]?.attributes.friendly_name || id,selected)).join('')}</select></label>
-      <label>Name (optional)<input name="name" value="${escape(c.name || '')}" placeholder="Use the device name"></label>
-      <label>Main temperature<select name="main">${option('top','Top',c.main || 'top')}${option('bottom','Bottom',c.main || 'top')}</select></label>
-      <label>Electric elements<select name="element_count">${option(2,'Two',c.element_count || 2)}${option(1,'One',c.element_count || 2)}</select></label>
-      <label>Theme<select name="theme">${['auto','light','dark'].map(v => option(v,v[0].toUpperCase()+v.slice(1),c.theme || 'auto')).join('')}</select></label>
-      <p>${ids.length ? 'Read-only. Selecting a geyser configures its temperature and heating entities.' : 'No geysers found. Add a device through the ezGeyser Direct integration first.'}</p>`;
-  }
-}
-if (!customElements.get('ezgeyser-card-editor')) customElements.define('ezgeyser-card-editor',EzGeyserCardEditor);
 
 if (!customElements.get('ezgeyser-card')) customElements.define('ezgeyser-card',EzGeyserCard);
 window.customCards = window.customCards || [];

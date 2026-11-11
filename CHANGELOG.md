@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 (2026-11-11)
+
+- Select the geyser by Home Assistant `device_id` using the standard device selector in the card editor.
+- Resolve all readings through entity registry membership and stable integration unique IDs, without guessing
+  entity IDs from a shared prefix. Refresh mappings on entity registry changes, including individual renames.
+- Keep legacy entity and explicit mapping configurations working; migrate to `device_id` for rename resilience.
+- Show registry loading/failure states and prevent opening more-info for nonexistent entities.
+
 ## 0.4.2 (2026-11-11)
 
 - Automatically serve and register the bundled dashboard card, so installing the integration is sufficient for

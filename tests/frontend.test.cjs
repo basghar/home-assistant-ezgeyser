@@ -11,8 +11,12 @@ function setup(config = {}) {
     dispatchEvent(event) { this.event = event; }
   }
   const context = vm.createContext({HTMLElement:Element,window:{},customElements:{get(){},define(){}},CustomEvent:class {constructor(type,options){this.type=type;Object.assign(this,options);}},Intl,Date});
-  vm.runInContext(source + '\nthis.api = {EzGeyserCard,EzGeyserCardEditor,registryConfig,tankColors,heatIcon};', context);
+  vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon};', context);
   const card = new context.api.EzGeyserCard();
+  card._registry = Object.entries(context.api.FIELDS).map(([key,suffix]) => ({
+    entity_id:`${['top','bottom','target','source'].includes(key) ? 'sensor' : 'binary_sensor'}.kitchen_${suffix}`,
+    platform:'ezgeyser',device_id:'kitchen-device',unique_id:`mac_${suffix}`,
+  }));
   card.setConfig({entity:'sensor.kitchen_temperature_top',name:'Kitchen',...config});
   const values = {top:'51.8',bottom:'47.2',target:'65',source:'gas',top_ok:'on',bottom_ok:'on',burner_left:'off',burner_right:'off',element_1:'off',element_2:'off',boost:'off'};
   const states = Object.fromEntries(Object.entries(card._ids).map(([key,id]) => [id,{state:values[key],attributes:{unit_of_measurement:'°C',...(key==='source' ? {source_code:1}: {})},last_updated:'2026-11-11T00:00:00Z'}]));
@@ -62,17 +66,44 @@ test('missing entities are explicit and recovery clears stale state',() => {
   const r=setup();r.update({top:'unavailable'});assert.match(r.update({top:'52.0'}),/Sensors OK/);assert.doesNotMatch(r.html(),/class="card stale/);
 });
 
-test('picker defaults and editor resolve renamed entities by device identity',async()=>{
+
+test('picker stores a device ID and the standard form uses an integration-filtered device selector',async()=>{
   const {api}=setup();
-  const entries=[
-    {entity_id:'sensor.renamed_top',platform:'ezgeyser',device_id:'a',unique_id:'mac_temperature_top'},
-    {entity_id:'sensor.renamed_bottom',platform:'ezgeyser',device_id:'a',unique_id:'mac_temperature_bottom'},
-    {entity_id:'sensor.other_top',platform:'ezgeyser',device_id:'b',unique_id:'other_temperature_top'},
-  ];
-  const config=await api.EzGeyserCard.getStubConfig({callWS:async()=>entries});
-  assert.equal(config.entities.top,'sensor.renamed_top');assert.equal(config.entities.bottom,'sensor.renamed_bottom');
-  const editor=new api.EzGeyserCardEditor();editor.setConfig({type:'custom:ezgeyser-card',...config});editor._registry=entries;
-  editor._change({target:{name:'entity',value:'sensor.other_top'}});
-  assert.equal(editor.event.type,'config-changed');assert.equal(editor.event.detail.config.entities.top,'sensor.other_top');
-  assert.equal(editor.event.detail.config.entities.bottom,undefined);
+  const config=await api.EzGeyserCard.getStubConfig({callWS:async()=>[
+    {entity_id:'sensor.random_name',platform:'ezgeyser',device_id:'device-a'},
+  ]});
+  assert.equal(config.device_id,'device-a');assert.equal(config.entity,undefined);
+  const form=api.EzGeyserCard.getConfigForm();
+  assert.equal(form.schema[0].name,'device_id');
+  assert.equal(form.schema[0].selector.device.filter[0].integration,'ezgeyser');
+});
+test('device selection resolves arbitrarily renamed entities and isolates other devices/integrations',()=>{
+  const t=setup({device_id:'kitchen-device'});
+  t.card._registry=t.card._registry.map(e=>({...e,entity_id:e.entity_id.replace('kitchen','arbitrary')}));
+  t.card._registry.push({platform:'other',device_id:'kitchen-device',unique_id:'x_temperature_top',entity_id:'sensor.wrong'});
+  t.card._registry.push({platform:'ezgeyser',device_id:'other-device',unique_id:'x_temperature_top',entity_id:'sensor.other'});
+  t.card._resolveDevice();assert.equal(t.card._ids.top,'sensor.arbitrary_temperature_top');
+  assert.equal(t.card._ids.element_2,'binary_sensor.arbitrary_heating_element_2');
+});
+test('registry loads from HA and missing devices never fall back to guessed entity names',async()=>{
+  const t=setup({device_id:'kitchen-device'});const entries=t.card._registry;
+  t.card._registry=undefined;t.card.hass={...t.card._hass,callWS:async()=>entries};
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(t.card._ids.top,'sensor.kitchen_temperature_top');
+  t.card.setConfig({device_id:'nonexistent'});assert.equal(t.card._ids.top,null);assert.match(t.html(),/Check entities/);
+  t.card._moreInfo();assert.equal(t.card.event,undefined);
+});
+test('entity registry updates refresh IDs, and pending subscriptions are cleaned up on disconnect',async()=>{
+  const t=setup({device_id:'kitchen-device'});let onEvent,resolveSubscribe,unsubscribed=0;
+  const entries=t.card._registry.map(e=>({...e,entity_id:e.entity_id.replace('kitchen','renamed')}));
+  t.card.isConnected=true;
+  t.card.hass={...t.card._hass,callWS:async()=>entries,connection:{subscribeMessage(cb){onEvent=cb;return new Promise(resolve=>resolveSubscribe=resolve);}}};
+  onEvent();await new Promise(resolve=>setImmediate(resolve));assert.equal(t.card._ids.top,'sensor.renamed_temperature_top');
+  t.card.isConnected=false;t.card.disconnectedCallback();resolveSubscribe(()=>unsubscribed++);
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(unsubscribed,1);
+});
+test('switching devices clears cached readings, and a registry failure is explicit',async()=>{
+  const t=setup({device_id:'kitchen-device'});assert.ok(t.card._last);
+  t.card.setConfig({device_id:'another'});assert.equal(t.card._last,null);
+  t.card._registry=undefined;t.card.hass={...t.card._hass,callWS:async()=>{throw Error('disconnected')}};
+  await new Promise(resolve=>setImmediate(resolve));assert.match(t.html(),/Registry unavailable/);
 });

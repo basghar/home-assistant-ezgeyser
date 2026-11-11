@@ -1,7 +1,7 @@
-# The integration automatically registers the card from version 0.4.2.
-# Paste into Add card > Manual. Use your actual entity ID and device name.
+# The integration automatically registers the card.
+# Copy the ID from the geyser device page URL: /config/devices/device/<device_id>.
+# This is a Home Assistant device ID, not a sensor entity ID or MAC address.
 type: custom:ezgeyser-card
-entity: sensor.kitchen_temperature_top
+device_id: YOUR_HOME_ASSISTANT_DEVICE_ID
 name: Kitchen
 # Defaults: main: top, element_count: 2, theme: auto
-# For renamed entity IDs, see the explicit entities mapping in README.md.
