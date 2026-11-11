@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (2026-11-11)
+## 0.5.1 (2026-11-11)
 
 - Rename the burner entities to identify the left and right flame sensors on one burner.
 
