@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2 (2026-11-11)
+
+- Automatically serve and register the bundled dashboard card, so installing the integration is sufficient for
+  **ezGeyser overview** to appear in **Add card** after a restart and browser refresh. No file copying is needed.
+- Add a visual geyser selector and settings for the name, main sensor, element count and theme. Resolve selected
+  devices through the entity registry to support renamed entity IDs.
+- Version the resource URL on upgrades and migrate earlier manual resource entries without changing dashboards.
+- Update installation instructions for Home Assistant 2026.11 Marketplace.
+
 ## 0.4.1 (2026-11-11)
 
 - Add local Home Assistant branding using the Android app’s original calendar-and-flame icon, with transparent

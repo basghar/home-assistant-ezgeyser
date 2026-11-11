@@ -6,12 +6,12 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname,'../custom_components/ezgeyser/www/ezgeyser-card.js'),'utf8');
 function setup(config = {}) {
   class Element {
-    attachShadow() { this.shadowRoot = {innerHTML:'',querySelector:() => this.card = {innerHTML:'',addEventListener(){}}}; }
+    attachShadow() { this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:() => this.card = {innerHTML:'',addEventListener(){}}}; }
     toggleAttribute() {}
     dispatchEvent(event) { this.event = event; }
   }
   const context = vm.createContext({HTMLElement:Element,window:{},customElements:{get(){},define(){}},CustomEvent:class {constructor(type,options){this.type=type;Object.assign(this,options);}},Intl,Date});
-  vm.runInContext(source + '\nthis.api = {EzGeyserCard,tankColors,heatIcon};', context);
+  vm.runInContext(source + '\nthis.api = {EzGeyserCard,EzGeyserCardEditor,registryConfig,tankColors,heatIcon};', context);
   const card = new context.api.EzGeyserCard();
   card.setConfig({entity:'sensor.kitchen_temperature_top',name:'Kitchen',...config});
   const values = {top:'51.8',bottom:'47.2',target:'65',source:'gas',top_ok:'on',bottom_ok:'on',burner_left:'off',burner_right:'off',element_1:'off',element_2:'off',boost:'off'};
@@ -60,4 +60,19 @@ test('configuration rejects invalid values and more-info uses main entity',() =>
 test('missing entities are explicit and recovery clears stale state',() => {
   const t=setup();delete t.card._hass.states[t.card._ids.target];t.card._signature=null;t.card._render();assert.match(t.html(),/Check entities/);
   const r=setup();r.update({top:'unavailable'});assert.match(r.update({top:'52.0'}),/Sensors OK/);assert.doesNotMatch(r.html(),/class="card stale/);
+});
+
+test('picker defaults and editor resolve renamed entities by device identity',async()=>{
+  const {api}=setup();
+  const entries=[
+    {entity_id:'sensor.renamed_top',platform:'ezgeyser',device_id:'a',unique_id:'mac_temperature_top'},
+    {entity_id:'sensor.renamed_bottom',platform:'ezgeyser',device_id:'a',unique_id:'mac_temperature_bottom'},
+    {entity_id:'sensor.other_top',platform:'ezgeyser',device_id:'b',unique_id:'other_temperature_top'},
+  ];
+  const config=await api.EzGeyserCard.getStubConfig({callWS:async()=>entries});
+  assert.equal(config.entities.top,'sensor.renamed_top');assert.equal(config.entities.bottom,'sensor.renamed_bottom');
+  const editor=new api.EzGeyserCardEditor();editor.setConfig({type:'custom:ezgeyser-card',...config});editor._registry=entries;
+  editor._change({target:{name:'entity',value:'sensor.other_top'}});
+  assert.equal(editor.event.type,'config-changed');assert.equal(editor.event.detail.config.entities.top,'sensor.other_top');
+  assert.equal(editor.event.detail.config.entities.bottom,undefined);
 });

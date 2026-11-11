@@ -1,4 +1,4 @@
-# First install/register ezgeyser-card.js as described in README.md.
+# The integration automatically registers the card from version 0.4.2.
 # Paste into Add card > Manual. Use your actual entity ID and device name.
 type: custom:ezgeyser-card
 entity: sensor.kitchen_temperature_top

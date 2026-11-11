@@ -10,12 +10,15 @@ status. It only reads: it never changes anything on the geyser, and it never tal
 > It has been tested against responses captured from one geyser (Hybrid v2, firmware 1.4.0), and every value it shows
 > is what the geyser reports. **None of the values is a safety signal.**
 
-## Install with HACS
+## Install with Marketplace (Home Assistant 2026.11+)
 
-1. In Home Assistant, open **HACS**, then the **⋮** menu (top right) > **Custom repositories**.
-2. Repository: `https://github.com/basghar/home-assistant-ezgeyser`, type: **Integration**. Select **Add**.
-3. Find **ezGeyser Direct** in HACS, select it, then **Download**.
-4. Restart Home Assistant (**Settings > System > ⏻ > Restart Home Assistant**).
+1. Open **Settings > Marketplace > Add from link**.
+2. Enter `https://github.com/basghar/home-assistant-ezgeyser` and select **Add**. Connect GitHub if prompted.
+3. Choose **Integration** if asked, open **ezGeyser Direct**, and select **Install**.
+4. Restart Home Assistant when prompted. After updates, restart Home Assistant and refresh your browser.
+
+On Home Assistant 2026.10, use **HACS > ⋮ > Custom repositories**, add the same URL with type **Integration**,
+then download **ezGeyser Direct** and restart. Marketplace replaces HACS in Home Assistant 2026.11.
 
 Manual install: copy `custom_components/ezgeyser/` into your Home Assistant `config/custom_components/` folder and
 restart.
@@ -74,24 +77,26 @@ The responsive **ezGeyser overview** custom dashboard card is bundled at
 It uses Home Assistant's [standard custom-card API](https://contributors.home-assistant.io/frontend/custom-ui/card/),
 with no JavaScript dependencies, external fonts, network requests or device controls.
 
-### Install the card
+### Add the card to an existing dashboard
 
-1. Copy `custom_components/ezgeyser/www/ezgeyser-card.js` to `www/ezgeyser-card.js` inside your Home Assistant
-   configuration folder (create `www` if necessary). Restart Home Assistant if you just created that folder.
-2. Enable **Advanced mode** in your Home Assistant user profile. Open **Settings > Dashboards > three-dot menu >
-   Resources**, add `/local/ezgeyser-card.js?v=1`, and choose **JavaScript module**.
-3. Edit a dashboard, select **Add card > Manual**, and paste:
+From version **0.4.2**, the integration serves and registers the bundled card automatically at startup.
+No copying files or manually registering a resource is required.
 
-   ```yaml
-   type: custom:ezgeyser-card
-   entity: sensor.kitchen_temperature_top
-   name: Kitchen
-   ```
+1. Update **ezGeyser Direct** in Marketplace, restart Home Assistant and refresh your browser.
+2. Open your dashboard, select **Edit > Add card**, and search for **ezGeyser overview** (community cards).
+3. Select your geyser in the visual editor. Optionally set the name, main sensor, element count and theme.
+4. Save and place the card. Repeat for other geysers.
 
-Repeat for each geyser. A copyable example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
-The card also appears as **ezGeyser overview** in the card picker after the resource loads; configuration uses YAML.
-After card updates, copy the new file again, increase the resource URL's `v` value and refresh your browser.
-Installing the integration does not register the card resource or change your dashboards automatically.
+The visual selector resolves entities from Home Assistant's registry, including renamed IDs.
+For manual YAML configuration, a copyable example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
+The integration registers a versioned JavaScript module resource and updates it on upgrades. Earlier manually
+registered `/local/ezgeyser-card.js` resources are migrated automatically in storage mode; other cards and dashboard
+layouts are left intact. You may delete the old copy from `www` after updating.
+
+For user-managed YAML resource lists, the integration uses Home Assistant's frontend module loader instead of
+modifying your YAML. Remove any older manual ezGeyser resource from YAML to avoid loading two copies.
+Headless installations without `frontend` skip card registration. If the card is missing after an update,
+restart Home Assistant, hard-refresh your browser, and check the integration logs for setup errors.
 
 ### Appearance and semantics
 

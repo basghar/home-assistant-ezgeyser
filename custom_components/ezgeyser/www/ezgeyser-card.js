@@ -94,7 +94,15 @@ class EzGeyserCard extends HTMLElement {
   set hass(value) { this._hass = value; this._render(); }
   getCardSize() { return 3; }
   getGridOptions() { return {columns:12,rows:'auto',min_columns:6}; }
-  static getStubConfig(hass) {
+  static getConfigElement() { return document.createElement('ezgeyser-card-editor'); }
+  static async getStubConfig(hass) {
+    if (hass.callWS) {
+      try {
+        const entries = await hass.callWS({type:'config/entity_registry/list'});
+        const first = entries.find(e => e.platform === 'ezgeyser' && e.unique_id?.endsWith('_temperature_top') && !e.disabled_by);
+        if (first) return registryConfig(entries,first.entity_id);
+      } catch { /* Fall back to state IDs when registry access is unavailable. */ }
+    }
     return {entity: Object.keys(hass.states).find(id => /^sensor\..+_temperature_top$/.test(id)) || 'sensor.kitchen_temperature_top'};
   }
   _moreInfo() {
@@ -159,6 +167,70 @@ class EzGeyserCard extends HTMLElement {
     if (restoreFocus) this._card.querySelector('.card').focus({preventScroll:true});
   }
 }
+// Resolve by registry identity, so selecting a device also works with renamed entities.
+function registryConfig(registry, entity) {
+  const anchor = registry.find(e => e.entity_id === entity && e.platform === 'ezgeyser');
+  if (!anchor) return {entity};
+  const entries = registry.filter(e => e.device_id === anchor.device_id && e.platform === 'ezgeyser');
+  const entities = {};
+  for (const [key,suffix] of Object.entries(FIELDS)) {
+    const match = entries.find(e => e.unique_id?.endsWith(`_${suffix}`));
+    if (match) entities[key] = match.entity_id;
+  }
+  return {entity,entities};
+}
+class EzGeyserCardEditor extends HTMLElement {
+  constructor() {
+    super(); this.attachShadow({mode:'open'});
+    this.shadowRoot.addEventListener('change', e => this._change(e));
+  }
+  setConfig(config) { this._config = {...config}; this._render(); }
+  set hass(hass) {
+    this._hass = hass;
+    if (!this._loading && hass.callWS) {
+      this._loading = true;
+      hass.callWS({type:'config/entity_registry/list'}).then(entries => {
+        this._registry = entries; this._render();
+      }).catch(() => { this._registry = []; this._render(); });
+    }
+    this._render();
+  }
+  _change(event) {
+    const key = event.target.name;
+    if (!key) return;
+    const config = {...this._config};
+    if (key === 'entity') {
+      // Discard mappings from the previous device when selecting another geyser.
+      delete config.entities;
+      Object.assign(config,registryConfig(this._registry || [],event.target.value));
+    } else if (key === 'element_count') config[key] = Number(event.target.value);
+    else if (event.target.value) config[key] = event.target.value;
+    else delete config[key];
+    this._config = config;
+    this.dispatchEvent(new CustomEvent('config-changed',{detail:{config},bubbles:true,composed:true}));
+  }
+  _render() {
+    if (!this._config || !this._hass) return;
+    const c = this._config, hass = this._hass;
+    const registered = (this._registry || []).filter(e => e.platform === 'ezgeyser' && e.unique_id?.endsWith('_temperature_top') && !e.disabled_by);
+    const ids = registered.length ? registered.map(e => e.entity_id) : Object.keys(hass.states).filter(id => /^sensor\..+_temperature_top$/.test(id));
+    const selected = c.entities?.top || c.entity;
+    if (selected && !ids.includes(selected)) ids.unshift(selected);
+    const signature = JSON.stringify([c,ids.map(id => [id,hass.states[id]?.attributes.friendly_name])]);
+    if (signature === this._editorSignature) return;
+    this._editorSignature = signature;
+    const option = (value,label,current) => `<option value="${escape(value)}" ${String(value) === String(current) ? 'selected' : ''}>${escape(label)}</option>`;
+    this.shadowRoot.innerHTML = `<style>:host{display:block;color:var(--primary-text-color);font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif)}label{display:grid;gap:6px;margin:0 0 16px;font-size:14px}select,input{box-sizing:border-box;width:100%;min-height:44px;padding:10px;border:1px solid var(--divider-color,#888);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#111);font:inherit}p{font-size:13px;color:var(--secondary-text-color)}</style>
+      <label>Geyser<select name="entity"><option value="" disabled ${selected ? '' : 'selected'}>Select a geyser</option>${ids.map(id => option(id,hass.states[id]?.attributes.friendly_name || id,selected)).join('')}</select></label>
+      <label>Name (optional)<input name="name" value="${escape(c.name || '')}" placeholder="Use the device name"></label>
+      <label>Main temperature<select name="main">${option('top','Top',c.main || 'top')}${option('bottom','Bottom',c.main || 'top')}</select></label>
+      <label>Electric elements<select name="element_count">${option(2,'Two',c.element_count || 2)}${option(1,'One',c.element_count || 2)}</select></label>
+      <label>Theme<select name="theme">${['auto','light','dark'].map(v => option(v,v[0].toUpperCase()+v.slice(1),c.theme || 'auto')).join('')}</select></label>
+      <p>${ids.length ? 'Read-only. Selecting a geyser configures its temperature and heating entities.' : 'No geysers found. Add a device through the ezGeyser Direct integration first.'}</p>`;
+  }
+}
+if (!customElements.get('ezgeyser-card-editor')) customElements.define('ezgeyser-card-editor',EzGeyserCardEditor);
+
 if (!customElements.get('ezgeyser-card')) customElements.define('ezgeyser-card',EzGeyserCard);
 window.customCards = window.customCards || [];
-if (!window.customCards.some(c => c.type === 'ezgeyser-card')) window.customCards.push({type:'ezgeyser-card',name:'ezGeyser overview',description:'Read-only tank temperatures, heating and sensor status.',preview:true});
+if (!window.customCards.some(c => c.type === 'ezgeyser-card')) window.customCards.push({type:'ezgeyser-card',name:'ezGeyser overview',description:'Read-only tank temperatures, heating and sensor status.',documentationURL:'https://github.com/basghar/home-assistant-ezgeyser#geyser-overview-card',preview:true});
