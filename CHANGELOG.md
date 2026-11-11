@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.6.2 (2026-11-11)
 
+- Card: add a top-right action that opens the geyser's embedded configuration page at `http://<device address>/`
+  in a new browser tab. It uses the current device-registry address, shows that address in its tooltip, and is
+  dimmed and disabled while unreachable. The custom gear-and-arrow icon matches the info icon's height and stroke,
+  with 18 px icon boxes, 10 px gaps and expanded 48 px touch targets.
 - Card: the Wi-Fi icon sits 2 units higher in its 24-unit box, so its dot rests on the level word's baseline, level
   with the cloud; it sat low. The same in the Android app.
 

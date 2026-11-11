@@ -15,7 +15,7 @@ function setup(config = {}) {
     dispatchEvent(event) { this.event = event; }
   }
   const context = vm.createContext({HTMLElement:Element,window:{},customElements:{get(){},define(){}},CustomEvent:class {constructor(type,options){this.type=type;Object.assign(this,options);}},Intl,Date});
-  vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon,scheduleView,fitLayout,fitClasses,wifiIcon,STYLE};', context);
+  vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon,scheduleView,fitLayout,fitClasses,wifiIcon,devicePage,STYLE};', context);
   const card = new context.api.EzGeyserCard();
   card._registry = Object.entries(context.api.FIELDS).map(([key,suffix]) => ({
     entity_id:`${SENSORS.includes(key) ? 'sensor' : 'binary_sensor'}.kitchen_${suffix}`,
@@ -24,7 +24,7 @@ function setup(config = {}) {
   card.setConfig({entity:'sensor.kitchen_temperature_top',name:'Kitchen',...config});
   const values = {top:'51.8',bottom:'47.2',target:'65',source:'gas',top_ok:'on',bottom_ok:'on',burner_left:'off',burner_right:'off',element_1:'off',element_2:'off',boost:'off',vacation:'off',timer:'0',wifi:'good',cloud:'on',clock:'off'};
   const states = Object.fromEntries(Object.entries(card._ids).map(([key,id]) => [id,{state:values[key],attributes:{unit_of_measurement:'°C',...(key==='source' ? {source_code:1}: {})},last_updated:'2026-11-11T00:00:00Z'}]));
-  let hass = {states,locale:{language:'en',time_zone:'server',time_format:'12'},config:{time_zone:'UTC',unit_system:{temperature:'°C'}},themes:{darkMode:false}};
+  let hass = {states,devices:{'kitchen-device':{configuration_url:'http://192.168.1.50/'}},locale:{language:'en',time_zone:'server',time_format:'12'},config:{time_zone:'UTC',unit_system:{temperature:'°C'}},themes:{darkMode:false}};
   card.hass = hass;
   return {card,api:context.api,
     update(changes,attributes){for(const [key,state] of Object.entries(changes)) states[card._ids[key]] = {...states[card._ids[key]],state,...(attributes ? {attributes} : {})};card.hass={...hass};return card.card.innerHTML;},
@@ -284,4 +284,38 @@ test('the hidden sample holds the worst case, with the card\'s own classes and i
   assert.equal((sample.match(/class="chip"/g)||[]).length,2);
   assert.match(api.STYLE,/\.chips-icons \.chip\{width:var\(--chip-h\);padding:0\}/);assert.match(api.STYLE,/ha-card,\.sample\{font-family:/);
   assert.match(api.STYLE,/\.name\{[^}]*font-size:16px/);
+});
+
+
+test('the rightmost action is the selected device root page, separate from Home Assistant details',()=>{
+  const t=setup();
+  const link=()=>t.html().match(/<a class="details-button device-page-button"[^>]*>/)[0];
+  assert.match(link(),/aria-label="Open device page in browser" title="Open 192.168.1.50" href="http:\/\/192.168.1.50\/" target="_blank" rel="noopener noreferrer"/);
+  assert.ok(t.html().indexOf('aria-label="Open main temperature details"') < t.html().indexOf('data-action="device-page"'));
+  t.card.card.click({target:{closest:selector=>['[data-action="device-page"]','[data-entity]'].includes(selector) ? {dataset:{entity:'top'}} : null}});
+  assert.equal(t.card.event,undefined);
+  t.card.card.click({target:{closest:selector=>selector==='[data-entity]' ? {dataset:{entity:'top'}} : null}});
+  assert.equal(t.card.event.detail.entityId,t.card._ids.top);
+  t.card._hass.devices['kitchen-device'].configuration_url='http://192.168.1.77/';
+  t.update({});
+  assert.match(link(),/title="Open 192.168.1.77" href="http:\/\/192.168.1.77\/"/);
+  t.update({top:'unavailable'});
+  assert.match(link(),/title="Open 192.168.1.77" role="link" aria-disabled="true" tabindex="-1"/);
+  assert.doesNotMatch(link(),/href=|target=/);
+  assert.match(t.update({top:'51.8'}),/href="http:\/\/192.168.1.77\/"/);
+  delete t.card._hass.devices['kitchen-device'].configuration_url;
+  t.update({});
+  assert.match(link(),/title="Device address unavailable" role="link" aria-disabled="true"/);
+  assert.doesNotMatch(link(),/href=/);
+});
+test('device page addresses come only from a valid local HTTP root URL',()=>{
+  const {devicePage}=setup().api;
+  for (const configuration_url of ['http://10.0.0.1/','http://172.16.0.1/','http://192.168.1.50/','http://169.254.1.1/','http://ezgeyser-123.local/']) {
+    assert.equal(devicePage({configuration_url}).url,configuration_url);
+  }
+  for (const configuration_url of [undefined,'javascript:alert(1)','https://192.168.1.50/','http://192.168.1.50/settings','http://192.168.1.50/?x=1','http://user@192.168.1.50/','http://192.168.1.50:8080/','http://256.1.1.1/','http://192.168.01.50/','http://example.com/']) {
+    assert.equal(devicePage({configuration_url}),null);
+  }
+  const t=setup({device_id:'another-device'});
+  assert.doesNotMatch(t.html(),/href=/);
 });

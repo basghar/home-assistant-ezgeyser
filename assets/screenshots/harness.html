@@ -87,7 +87,8 @@ async function main() {
   const stage = document.getElementById('stage');
   stage.style.gridTemplateColumns = scene.widths ? 'max-content' : scene.columns.map(w => `${w}px`).join(' ');
   const live = Object.assign({}, ...Object.keys(GEYSERS).map(id => states(id, GEYSERS[id].values)));
-  const hass = {states:live, locale:{language:'en'}, config:{unit_system:{temperature:'°C'}}, themes:{darkMode:scene.dark}, callWS:async () => registry};
+  const devices = Object.fromEntries(Object.keys(GEYSERS).map((id,i) => [`device-${id}`, {name:GEYSERS[id].name,configuration_url:`http://192.168.1.${50+i}/`}]));
+  const hass = {states:live, devices, locale:{language:'en'}, config:{unit_system:{temperature:'°C'}}, themes:{darkMode:scene.dark}, callWS:async () => registry};
   const cards = scene.cards.map((id, i) => {
     const card = document.createElement('ezgeyser-card');
     if (scene.widths) card.style.width = `${scene.widths[i]}px`;

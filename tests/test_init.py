@@ -11,7 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, async_
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import CONF_HOST, STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
@@ -104,6 +104,7 @@ async def test_setup_creates_one_named_device_with_twenty_prefixed_entities(
     assert (device.name, device.manufacturer, device.model, device.sw_version) == (
         "Kitchen", "KytherTek", "Hybrid geyser · v2", "1.4.0",
     )  # fmt: skip
+    assert device.configuration_url == f"http://{HOST}/"
     assert (dr.CONNECTION_NETWORK_MAC, MAC) in device.connections
     entities = er.async_entries_for_device(er.async_get(hass), device.id, include_disabled_entities=True)
     assert {entity.entity_id for entity in entities} == set(ENTITY_IDS) | RAW_ENTITY_IDS
@@ -120,6 +121,29 @@ async def test_setup_creates_one_named_device_with_twenty_prefixed_entities(
         f"http://{HOST}/quickStatus",
         f"http://{HOST}/api/schedules",
     ]
+
+
+async def test_device_page_address_follows_a_host_change_after_reload(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
+) -> None:
+    await _setup(hass, entry)
+    registry = dr.async_get(hass)
+    device = registry.async_get_device_by_identifier((DOMAIN, MAC), entry.entry_id)
+    assert device is not None
+    device_id = device.id
+    new_host = "192.168.50.77"
+    geyser.get(f"http://{new_host}/data", content=DATA)
+    geyser.get(f"http://{new_host}/quickStatus", content=QUICK_STATUS)
+    geyser.get(f"http://{new_host}/api/schedules", content=b"[]")
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_HOST: new_host})
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    device = registry.async_get_device_by_identifier((DOMAIN, MAC), entry.entry_id)
+    assert device is not None
+    assert device.id == device_id
+    assert device.configuration_url == f"http://{new_host}/"
 
 
 async def test_setup_retries_while_the_geyser_does_not_answer(

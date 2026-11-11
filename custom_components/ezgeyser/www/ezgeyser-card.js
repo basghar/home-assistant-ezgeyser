@@ -15,7 +15,7 @@ const PATHS = {
   warning: 'M12 3L2 21h20L12 3Zm0 6v5m0 3v.1',
   target: 'M12 3v3m0 12v3M3 12h3m12 0h3M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   offline: 'M3 3l18 18M2 8a16 16 0 0 1 4-2m4-1a16 16 0 0 1 12 3M5 12a11 11 0 0 1 5-2m5 0a11 11 0 0 1 4 2M8 16a6 6 0 0 1 8 0M12 20h.01',
-  info: 'M12 11v6m0-10v.1M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
+  info: 'M12 11v6m0-10v.1M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0',
   // Tabler calendar-time, calendar-off, beach and x (MIT), as in the Android app.
   calendarClock: 'M11.795 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M14 18a4 4 0 1 0 8 0a4 4 0 1 0-8 0m1-15v4M7 3v4m-4 4h16M18 16.496V18l1 1',
   calendarOff: 'M9 5h9a2 2 0 0 1 2 2v9m-.184 3.839A2 2 0 0 1 18 21H6a2 2 0 0 1-2-2V7a2 2 0 0 1 1.158-1.815M16 3v4M8 3v1m-4 7h7m4 0h5M3 3l18 18',
@@ -31,6 +31,27 @@ const PATHS = {
 };
 function icon(name) {
   return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${PATHS[name]}"/></svg>`;
+}
+// The device-page glyph shares row 1's 18 px box and the info circle's 3..21 visual height.
+function devicePageIcon() {
+  const teeth = Array.from({length:8},(_,i) => {
+    const angle = i * Math.PI / 4;
+    const point = radius => `${(11 + radius * Math.cos(angle)).toFixed(4)} ${(13 + radius * Math.sin(angle)).toFixed(4)}`;
+    return `<path d="M${point(3.4)} ${point(4.85)}" stroke-width="1.8"/>`;
+  }).join('');
+  return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 5H5.5a2.5 2.5 0 0 0-2.5 2.5v11A2.5 2.5 0 0 0 5.5 21h11a2.5 2.5 0 0 0 2.5-2.5V12.5"/><path d="M17.5 6.5 21 3M17 3h4v4"/><circle cx="11" cy="13" r="3.4" stroke-width="1.7"/><circle cx="11" cy="13" r="1.36" stroke-width="1.4"/>${teeth}</svg>`;
+}
+// The integration publishes this root URL in the device registry. Never infer an address from a name or entity ID.
+function devicePage(device) {
+  const match = /^http:\/\/([^/?#@:]+)\/$/.exec(device?.configuration_url || '');
+  if (!match) return null;
+  const host = match[1];
+  const octets = host.split('.');
+  const ipv4 = octets.length === 4 && octets.every(part => /^(0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
+  const local = ipv4 && (['10','127'].includes(octets[0]) || octets[0] === '172' && Number(octets[1]) >= 16 && Number(octets[1]) <= 31
+    || octets[0] === '192' && octets[1] === '168' || octets[0] === '169' && octets[1] === '254');
+  const mdns = host.length <= 253 && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+local$/.test(host);
+  return local || mdns ? {url:match[0],host} : null;
 }
 // The Wi-Fi level (the integration's enum states), the word the footer shows, and how many arcs are lit, as in the app.
 const WIFI = {excellent:['Excellent',3], good:['Good',2], fair:['Fair',1], weak:['Weak',0]};
@@ -202,7 +223,7 @@ const STYLE = `
 :host{display:block;--surface:#EFEDF4;--text:#1B1B1F;--secondary:#46464F;--tertiary:#77767F;--line:#DAD8E2;--off:#8E8C96;--ok:#1E6B3A;--ok-bg:#D4EEDB;--warn:#8A5100;--warn-bg:#FFDDB8;--primary:#3B57A6;--on-primary:#FFFFFF;--primary-bg:#DCE2FA;--dialog:#FBF8FF;--gas:#D9480F;--electric:#B86E00;--wifi-off:#CFCDD6;--line-h:18px;--chip-h:22px;--row-h:calc(2 * var(--line-h) + var(--chip-h) + 2 * 6px)}
 :host([dark]){--surface:#202024;--text:#E5E1E6;--secondary:#C6C5CF;--tertiary:#908F99;--line:#34343A;--off:#77767F;--ok:#9AD6A9;--ok-bg:#1E3826;--warn:#FFB95E;--warn-bg:#4A2B00;--primary:#B4C5FF;--on-primary:#13285E;--primary-bg:#2B3A66;--dialog:#2A2A2F;--gas:#FF8F57;--electric:#F2B33D;--wifi-off:#46454C}
 *{box-sizing:border-box}ha-card{display:block;background:var(--ha-card-background,var(--surface));color:var(--text);border:1px solid var(--ha-card-border-color,var(--line));border-radius:var(--ha-card-border-radius,16px);box-shadow:var(--ha-card-box-shadow,none);overflow:hidden}ha-card,.sample{font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif)}
-.card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:8px;min-width:0;height:22px}.name{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.details-button{border:0;background:none;color:var(--tertiary);padding:0;min-width:28px;min-height:28px;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button:focus-visible{outline:2px solid var(--primary)}
+.card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:10px;min-width:0;height:22px}.name{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.header .icon{width:18px;height:18px;stroke-width:2}.details-button{position:relative;flex:none;width:18px;height:22px;border:0;background:none;color:var(--secondary);padding:0;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button::before{content:"";position:absolute;z-index:0;width:48px;height:48px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}.details-button .icon,.header .name,.header .badge{position:relative;z-index:1}.details-button:focus-visible{outline:2px solid var(--primary);outline-offset:3px}.details-button[aria-disabled="true"]{opacity:.38;cursor:default}.details-button[aria-disabled="true"]::before{pointer-events:none}
 .temperatures{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:8px;align-items:center;min-height:var(--row-h);margin:12px 0 8px}.left{display:flex;align-items:center;align-self:stretch;gap:12px;min-width:0}.tank{width:11px;flex:none;align-self:stretch;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--line)}.half{height:50%;flex:1}.half+.half{border-top:1px solid var(--surface)}.half.fault{background:repeating-linear-gradient(135deg,var(--off) 0 3px,var(--surface) 3px 5px)!important}.readings{min-width:0}.reading{display:flex;align-items:baseline;gap:4px;white-space:nowrap;line-height:.75}.number{font-size:36px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}.unit{font-size:15px;color:var(--secondary)}.secondary{display:block;font-size:14px;line-height:.95;white-space:nowrap;color:var(--secondary);margin-top:11px}.fault-text{color:var(--warn)}
 .right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px;min-width:0;font-size:12px;color:var(--secondary);text-align:right}.line{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;max-width:100%;min-height:var(--line-h);white-space:nowrap;overflow:hidden}.line .icon{width:14px;height:14px}.value{font-weight:500;color:var(--text)}.quiet{color:var(--tertiary)}.day-badge{display:inline-grid;place-items:center;flex:none;height:18px;min-width:18px;padding:0 4px;border-radius:9px;background:var(--primary);color:var(--on-primary);font-size:10px;font-weight:600;line-height:1}.modes{display:flex;gap:6px;flex:none}.chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:var(--chip-h);min-width:var(--chip-h);border-radius:11px;padding:0 9px 0 7px;font-size:11px;font-weight:500;white-space:nowrap;background:var(--primary-bg);color:var(--primary)}.chip .icon{width:13px;height:13px}.chips-icons .chip{width:var(--chip-h);padding:0}.chips-icons .chip span{display:none}
 .footer{border-top:1px solid var(--line);padding-top:6px;display:flex;align-items:center;gap:8px;min-height:31px;font-size:12px;color:var(--secondary);white-space:nowrap}.start{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.sources{display:flex;gap:6px;flex:none}.heat-control{position:relative;width:24px;height:24px;flex:none}.heat-buttons{position:absolute;inset:0;display:flex}.heat-button{flex:1;min-width:0;height:100%}.heat{width:24px;height:24px;color:var(--off);overflow:visible}.glyph{fill:none;stroke:currentColor;stroke-width:2.3;stroke-linejoin:round}.on .glyph{fill:currentColor}.gas.on{color:var(--gas)}.electric.on{color:var(--electric)}.segment{fill:none;stroke:var(--off);opacity:.55;stroke-width:2.6;stroke-linecap:round}.gas .lit{stroke:var(--gas);opacity:1}.electric .lit{stroke:var(--electric);opacity:1}.activity{flex:none;overflow:hidden;text-overflow:ellipsis}.activity.heating{color:var(--text)}.timer,.wifi,.cloud,.clock{display:inline-flex;align-items:center;gap:4px;flex:none}.wifi .icon{width:18px;height:18px}.status{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}.warn{color:var(--warn)}.stale .number,.stale .unit,.stale .secondary{color:var(--tertiary)}.stale .tank{opacity:.45}.stale .right{color:var(--tertiary)}
@@ -225,6 +246,8 @@ class EzGeyserCard extends HTMLElement {
     this._remeasure = () => { this._sampleSize = null; this._fitKey = null; this._fitLayout(); };
     this._dialog = this.shadowRoot.querySelector('dialog');
     this._card.addEventListener('click', e => {
+      // Native links keep browser keyboard, context-menu and long-press behavior, separate from HA details.
+      if (e.target.closest('[data-action="device-page"]')) return;
       if (e.target.closest('[data-action="schedule"]')) return this._openDetails();
       const button = e.target.closest('[data-entity]');
       if (button) this._moreInfo(button.dataset.entity);
@@ -432,6 +455,8 @@ class EzGeyserCard extends HTMLElement {
     if (config.device_id === '') badge = 'Select geyser';
     if (unreachable) badge = 'Unreachable';
     const warning = missing || unreachable || unknown || issues.length > 0;
+    const page = devicePage(hass.devices?.[this._deviceId]);
+    this._devicePage = !missing && !unreachable ? page : null;
     const name = config.name || hass.devices?.[this._deviceId]?.name_by_user || hass.devices?.[this._deviceId]?.name || this._ids.top?.replace(/^sensor\./,'').replace(/_temperature_top$/,'').replaceAll('_',' ') || 'Geyser';
     const unit = shown[main]?.attributes.unit_of_measurement || '°C';
     const target = numeric(shown.target), noTarget = celsius(shown.target);
@@ -459,7 +484,7 @@ class EzGeyserCard extends HTMLElement {
     const modes = (on('boost') ? chip('boost','rocket','Boost') : '') + (on('vacation') ? chip('vacation','beach','Vacation') : '');
     const badgeLabel = issues.length && badge === badgeText(issues) ? issues.length > 1 ? `${badge}: ${issues.join(', ')}` : issues[0] : badge;
     const links = linkItems(link);
-    const body = `<div class="header"><h2 class="name" title="${escape(name)}">${escape(name)}</h2><div class="badge ${warning ? 'warning' : ''}" role="img" aria-label="${escape(badgeLabel)}" title="${escape(badgeLabel)}">${icon(unreachable ? 'offline' : warning ? 'warning' : 'check')}<span>${escape(badge)}</span></div><button class="details-button entity-button" data-entity="${main}" aria-label="Open main temperature details">${icon('info')}</button></div>
+    const body = `<div class="header"><h2 class="name" title="${escape(name)}">${escape(name)}</h2><div class="badge ${warning ? 'warning' : ''}" role="img" aria-label="${escape(badgeLabel)}" title="${escape(badgeLabel)}">${icon(unreachable ? 'offline' : warning ? 'warning' : 'check')}<span>${escape(badge)}</span></div><button class="details-button entity-button" data-entity="${main}" aria-label="Open main temperature details">${icon('info')}</button><a class="details-button device-page-button" data-action="device-page" aria-label="Open device page in browser" title="${escape(page ? `Open ${page.host}` : 'Device address unavailable')}"${this._devicePage ? ` href="${escape(page.url)}" target="_blank" rel="noopener noreferrer"` : ' role="link" aria-disabled="true" tabindex="-1"'}>${devicePageIcon()}</a></div>
       <div class="temperatures"><div class="left"><div class="tank" role="group" aria-label="${escape(tankLabel)}" title="${escape(tankLabel)}"><button class="half entity-button ${top === null ? 'fault' : ''}" data-entity="top" aria-label="Open top temperature details" style="background:${colors[0]}"></button><button class="half entity-button ${bottom === null ? 'fault' : ''}" data-entity="bottom" aria-label="Open bottom temperature details" style="background:${colors[1]}"></button></div>
       <div class="readings"><button class="reading entity-button" data-entity="${main}" aria-label="Open ${main} temperature details"><span class="number ${number(main) === null ? 'fault-text' : ''}">${escape(display(main))}</span><span class="unit">${escape(unit)}</span></button><button data-entity="${other}" aria-label="Open ${other} temperature details" class="secondary entity-button ${number(other) === null ? 'fault-text' : ''}">${other === 'top' ? 'Top' : 'Bottom'} ${escape(display(other))}${escape(shown[other]?.attributes.unit_of_measurement || '°C')}</button></div></div>
       <div class="right">${unreachable ? '<span class="line">Last known values</span>' : `<button class="line entity-button" data-entity="target" aria-label="Open target temperature details">${targetLine}</button>${scheduleLine(this._schedule,Boolean(states.next_event),showSource)}${modes ? `<div class="modes">${modes}</div>` : ''}`}</div></div>

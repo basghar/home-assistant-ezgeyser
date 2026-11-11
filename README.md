@@ -168,7 +168,9 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
 - **Loading entities**, **Registry unavailable** or **Check entities:** the card cannot find the selected geyser's
   entities.
 - **Selecting** a reading, a tank half, a mode, a footer item, or the left or right half of the flame or bolt opens
-  that entity's details and history. ⓘ opens the main temperature.
+  that entity's details and history. ⓘ opens the main temperature. The box-and-gear action beside it opens the geyser's
+  local web page in a new browser tab; its tooltip shows the address. It is dimmed and disabled while unreachable or
+  while its address is unavailable. Your browser must be on the geyser's network to reach that page.
 
 Cards are all the same height, follow Home Assistant's light or dark mode, fit their column, and work in Sections and
 Masonry views. Text never shrinks or wraps: when a card is too narrow, the modes show as icons, then the Wi-Fi word,

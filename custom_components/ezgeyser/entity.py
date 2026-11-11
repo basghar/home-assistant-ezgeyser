@@ -1,6 +1,6 @@
 """The base of every ezGeyser entity: one device per geyser, identified by its MAC address."""
 
-from homeassistant.const import CONF_MAC
+from homeassistant.const import CONF_HOST, CONF_MAC
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -26,4 +26,5 @@ class EzGeyserEntity(CoordinatorEntity[EzGeyserCoordinator]):
             model=identity.model,
             sw_version=identity.sw_version,
             hw_version=identity.hw_version,
+            configuration_url=f"http://{coordinator.config_entry.data[CONF_HOST]}/",
         )
