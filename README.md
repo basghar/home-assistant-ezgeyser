@@ -104,9 +104,8 @@ Never use a burner flag as proof that a flame is, or is not, burning.
 
 ## Screenshots
 
-These show the real bundled card, but with **simulated readings**: the geysers and values are made up. Only idle
-values have been captured from a real geyser so far, so the heating screenshots show how the card displays those
-flags, not a confirmed heating cycle.
+These show the real card with **simulated readings**: the geysers and values are made up, and heating has not yet been
+seen on a real geyser (see [Entities](#entities)).
 
 | | |
 |---|---|
@@ -117,72 +116,53 @@ flags, not a confirmed heating cycle.
 | ![Garage geyser unreachable, showing muted last known values and when they were last available](assets/screenshots/unreachable.png) | |
 | **Unreachable.** Muted last known values and when Home Assistant last had them. | |
 
-In narrow dashboard columns the card switches to a stacked layout:
+In narrow dashboard columns the card stacks its readings:
 
 ![Three narrow ezGeyser cards side by side: Kitchen idle, Laundry heating on both elements, Rooftop heating on one burner side](assets/screenshots/narrow.png)
 
-The images are rendered from [`assets/screenshots/harness.html`](assets/screenshots/harness.html), which loads the
-card with simulated Home Assistant data. Run `assets/screenshots/capture.sh` (needs Google Chrome) to regenerate
-them after changing the card.
+To regenerate the images after changing the card, run `assets/screenshots/capture.sh` (needs Google Chrome). It
+renders [`assets/screenshots/harness.html`](assets/screenshots/harness.html), which loads the card with simulated
+Home Assistant data.
 
 ## Geyser overview card
 
-The responsive **ezGeyser overview** custom dashboard card is bundled at
-[`custom_components/ezgeyser/www/ezgeyser-card.js`](custom_components/ezgeyser/www/ezgeyser-card.js).
-It uses Home Assistant's [standard custom-card API](https://contributors.home-assistant.io/frontend/custom-ui/card/),
-with no JavaScript dependencies, external fonts, external network requests or device controls.
+The integration includes the **ezGeyser overview** dashboard card
+([`ezgeyser-card.js`](custom_components/ezgeyser/www/ezgeyser-card.js)) and registers it on its own: there are no
+files to copy and no resources to add. The card has no external dependencies, makes no network requests of its own,
+and has no controls.
 
-### Add the card to an existing dashboard
+### Add the card to a dashboard
 
-From version **0.4.2**, the integration serves and registers the bundled card automatically at startup.
-No copying files or manually registering a resource is required.
+1. Open your dashboard, select **Edit > Add card**, and search for **ezGeyser overview**.
+2. Pick your geyser under **Geyser**. Optionally set the name, main temperature, number of electric elements and
+   theme.
+3. Save. Add one card per geyser.
 
-1. Update **ezGeyser Direct** in Marketplace, restart Home Assistant and refresh your browser.
-2. Open your dashboard, select **Edit > Add card**, and search for **ezGeyser overview** (community cards).
-3. Select your geyser using Home Assistant’s device selector. Optionally set the name, main sensor, element count and theme.
-4. Save and place the card. Repeat for other geysers.
+If the card is not in the list, restart Home Assistant, hard-refresh your browser, and check the logs for ezGeyser
+setup errors. Installations without Home Assistant's `frontend` skip the card. For individual flags and their history
+you can also use the built-in **Entities card**.
 
-The selector stores the Home Assistant `device_id`. The card resolves entities from the entity registry at runtime,
-including renamed IDs, and refreshes its mappings when registry entries change.
-For manual YAML configuration, a copyable example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
-The integration registers a versioned JavaScript module resource and updates it on upgrades. Earlier manually
-registered `/local/ezgeyser-card.js` resources are migrated automatically in storage mode; other cards and dashboard
-layouts are left intact. You may delete the old copy from `www` after updating.
+### Reading the card
 
-For user-managed YAML resource lists, the integration uses Home Assistant's frontend module loader instead of
-modifying your YAML. Remove any older manual ezGeyser resource from YAML to avoid loading two copies.
-Headless installations without `frontend` skip card registration. If the card is missing after an update,
-restart Home Assistant, hard-refresh your browser, and check the integration logs for setup errors.
+- **Tank bar:** the top half is the top sensor and the bottom half the bottom sensor. The colour runs from blue (cool)
+  through amber to red (hot), with extra lightness contrast so that even a 1 °C difference shows. The colours are a
+  guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor reports a fault.
+- **Badge:** **Sensors OK**, the name of the faulty sensor, or **2 issues**. It covers only the two temperature
+  sensors, nothing else.
+- **Footer:** the flame is the burner, and its two bars are the two sides of the same burner. The bolt is the electric
+  elements, one bar each. A filled icon means the flag is on, an outline means off, and dimmed means unknown. The text
+  says **Heating**, **Idle** with the selected source (`Source N?` for an unconfirmed source code), or **Heating
+  status unknown**.
+- **Unreachable:** the last values this browser saw, muted, with the time Home Assistant last updated them. That is
+  not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
+- **Loading entities**, **Registry unavailable** or **Check entities:** the card cannot find the selected geyser's
+  entities.
+- Selecting the card (or Enter or Space) opens the main temperature's details and history.
 
-### Appearance and semantics
+The card follows Home Assistant's light or dark mode, fits its own column width, and works in Sections and Masonry
+views. Wi-Fi, cloud, clock, vacation and timer status are not shown, because the integration does not provide them.
 
-The card follows Home Assistant light/dark mode, with the Android app's tonal surfaces, health pill, large main
-reading, secondary sensor, target, Boost chip and heating footer. The top and bottom halves of its tank bar always
-represent the physical top and bottom sensors. Temperature colours interpolate continuously from blue through
-teal, amber and orange to red. An additional bounded lightness difference emphasizes relative top/bottom differences
-(as small as 1 °C); colours are illustrative rather than a calibrated scale. Numeric values and a descriptive tank
-label/tooltip provide the precise readings. Invalid sensors use an amber dash and a grey hatched half.
-
-Both heat-source icons are custom inline SVGs using the specified paths. A lit flame means a reported burner flag is
-on; the two bars show the left/right sides of the **same burner**. The bolt and its bars show the elements. Off glyphs
-are outlines. Unknown heating flags keep icons dimmed and show “Heating status unknown.” Every icon has an accessible
-label. Card click, Enter or Space opens Home Assistant's main temperature entity details/history.
-
-The card wraps by **its own width**, including narrow dashboard columns. It has no fixed height, uses a compact
-three-row layout, and supports Home Assistant Sections and Masonry views. The health badge says **Sensors OK** for
-valid temperature sensors, names a single sensor fault, or counts both faults. It does not imply other health checks.
-
-Unavailable entities show **Unreachable** and muted last-known readings when this card has seen them during the
-current browser session. The displayed “Last available” time is Home Assistant's entity update timestamp, not the
-last successful device poll. On a fresh page with no previous readings, values show dashes. Missing entity IDs show
-**Check entities**. There is no retry button because the integration already retries and exposes no refresh action.
-Wi-Fi, cloud, clock, vacation and timer entities are not currently exposed, so their icons and values are omitted.
-
-### Configuration
-
-From **0.5.0**, select the whole geyser by its Home Assistant device ID. The card discovers its temperature and
-heating entities through the entity registry, using stable integration unique IDs. It never constructs entity IDs
-from the device name, area or a shared prefix.
+### YAML configuration
 
 ```yaml
 type: custom:ezgeyser-card
@@ -190,27 +170,24 @@ device_id: YOUR_HOME_ASSISTANT_DEVICE_ID
 name: Ground Floor Bathroom
 ```
 
-Use the visual device selector to avoid typing the ID. For a YAML dashboard, open the geyser’s device page under
-**Settings > Devices & services > Devices** and copy the ID from `/config/devices/device/<device_id>` in its URL.
-This ID belongs to your Home Assistant installation; it is not the device name, IP address, MAC address or an
-entity ID. Removing the device and adding it again may require selecting it again.
+| Option | Default | Meaning |
+|---|---|---|
+| `device_id` | required | The geyser's Home Assistant device ID: open its page under **Settings > Devices & services > Devices** and copy the part after `/config/devices/device/` in the address. It is not the name, IP address, MAC address or an entity ID. If you remove the device and add it again, pick it again. |
+| `name` | device name | Title shown on the card. |
+| `main` | `top` | Which sensor is the large reading: `top` or `bottom`. The tank halves never swap. |
+| `element_count` | `2` | `1` draws a single element bar, lit when either element flag is on. The card never guesses which elements are installed. |
+| `theme` | `auto` | `auto` follows Home Assistant; `light` or `dark` forces a palette. |
 
-`name` is optional and defaults to the HA device name. `main: bottom` swaps the large and secondary readings; it does
-**not** swap the physical tank halves. `element_count: 1` renders a single solid element bar (either reported element
-flag lights it); the default is two. The card never infers installed hardware from an element remaining off.
-`theme: auto` follows HA; `light` or `dark` forces a palette. Temperatures use HA's display units; colour calculations
-and zero-target detection convert back to Celsius. Source code 1 is Gas; other codes display as `Source N?`.
+The card finds the geyser's entities by device, so renaming the device or any entity never breaks it. Temperatures
+use your Home Assistant units. The same example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
 
-The card listens for entity registry updates, so renaming an individual sensor does not require editing the card.
-It shows **Loading entities**, **Registry unavailable**, or **Check entities** when it cannot resolve the selected
-device’s entities; it does not open a misleading more-info dialog for a missing entity.
+### Upgrading from versions before 0.5.0
 
-Older `entity:` configurations remain supported: the card looks up that exact entity in the registry and finds its
-related entities by device membership. Renaming that anchor still requires updating the legacy `entity:` value, so
-migrating to `device_id:` is recommended. Explicit legacy `entities:` mappings also remain supported in YAML. Remove
-`entity:` and `entities:` when switching to the standard visual device selector.
-
-You can also use Home Assistant's built-in **Entities card** to show individual flags and their history.
+- **Card added by hand (before 0.4.2):** a manually added `/local/ezgeyser-card.js` resource is replaced
+  automatically on dashboards managed in the UI; afterwards you can delete the old file from `www`. If your resources
+  are in YAML, remove the old entry yourself, or the card loads twice. The integration never edits your YAML.
+- **Cards using `entity:` or `entities:` (before 0.5.0):** they still work in YAML, but an `entity:` card breaks if
+  you rename that entity. Replace those keys with `device_id:` to use the visual editor.
 
 ## How it reads the geyser
 
