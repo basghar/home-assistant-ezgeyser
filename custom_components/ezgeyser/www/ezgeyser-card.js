@@ -32,7 +32,7 @@ const PATHS = {
 function icon(name) {
   return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${PATHS[name]}"/></svg>`;
 }
-// The device-page glyph shares row 1's 18 px box and the info circle's 3..21 visual height.
+// The device-page glyph shares the info circle's 3..21 geometry; both scale just inside the badge's painted height.
 function devicePageIcon() {
   const teeth = Array.from({length:8},(_,i) => {
     const angle = i * Math.PI / 4;
@@ -223,7 +223,7 @@ const STYLE = `
 :host{display:block;--surface:#EFEDF4;--text:#1B1B1F;--secondary:#46464F;--tertiary:#77767F;--line:#DAD8E2;--off:#8E8C96;--ok:#1E6B3A;--ok-bg:#D4EEDB;--warn:#8A5100;--warn-bg:#FFDDB8;--primary:#3B57A6;--on-primary:#FFFFFF;--primary-bg:#DCE2FA;--dialog:#FBF8FF;--gas:#D9480F;--electric:#B86E00;--wifi-off:#CFCDD6;--line-h:18px;--chip-h:22px;--row-h:calc(2 * var(--line-h) + var(--chip-h) + 2 * 6px)}
 :host([dark]){--surface:#202024;--text:#E5E1E6;--secondary:#C6C5CF;--tertiary:#908F99;--line:#34343A;--off:#77767F;--ok:#9AD6A9;--ok-bg:#1E3826;--warn:#FFB95E;--warn-bg:#4A2B00;--primary:#B4C5FF;--on-primary:#13285E;--primary-bg:#2B3A66;--dialog:#2A2A2F;--gas:#FF8F57;--electric:#F2B33D;--wifi-off:#46454C}
 *{box-sizing:border-box}ha-card{display:block;background:var(--ha-card-background,var(--surface));color:var(--text);border:1px solid var(--ha-card-border-color,var(--line));border-radius:var(--ha-card-border-radius,16px);box-shadow:var(--ha-card-box-shadow,none);overflow:hidden}ha-card,.sample{font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif)}
-.card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:10px;min-width:0;height:22px}.name{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.header .icon{width:18px;height:18px;stroke-width:2}.details-button{position:relative;flex:none;width:18px;height:22px;border:0;background:none;color:var(--secondary);padding:0;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button::before{content:"";position:absolute;z-index:0;width:48px;height:48px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}.details-button .icon,.header .name,.header .badge{position:relative;z-index:1}.details-button:focus-visible{outline:2px solid var(--primary);outline-offset:3px}.details-button[aria-disabled="true"]{opacity:.38;cursor:default}.details-button[aria-disabled="true"]::before{pointer-events:none}
+.card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:10px;min-width:0;min-height:24px}.name{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.header .icon{width:18px;height:18px;stroke-width:2}.details-button{position:relative;flex:none;width:var(--header-action-size,22.8px);height:var(--header-action-size,22.8px);border:0;background:none;color:var(--secondary);padding:0;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button::before{content:"";position:absolute;z-index:0;width:48px;height:48px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}.header .name,.header .badge{position:relative;z-index:1}.details-button .icon{position:absolute;z-index:1;left:50%;top:50%;width:120%;height:120%;transform:translate(-50%,-50%)}.details-button:focus-visible{outline:2px solid var(--primary);outline-offset:3px}.details-button[aria-disabled="true"]{opacity:.38;cursor:default}.details-button[aria-disabled="true"]::before{pointer-events:none}
 .temperatures{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:8px;align-items:center;min-height:var(--row-h);margin:12px 0 8px}.left{display:flex;align-items:center;align-self:stretch;gap:12px;min-width:0}.tank{width:11px;flex:none;align-self:stretch;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--line)}.half{height:50%;flex:1}.half+.half{border-top:1px solid var(--surface)}.half.fault{background:repeating-linear-gradient(135deg,var(--off) 0 3px,var(--surface) 3px 5px)!important}.readings{min-width:0}.reading{display:flex;align-items:baseline;gap:4px;white-space:nowrap;line-height:.75}.number{font-size:36px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}.unit{font-size:15px;color:var(--secondary)}.secondary{display:block;font-size:14px;line-height:.95;white-space:nowrap;color:var(--secondary);margin-top:11px}.fault-text{color:var(--warn)}
 .right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px;min-width:0;font-size:12px;color:var(--secondary);text-align:right}.line{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;max-width:100%;min-height:var(--line-h);white-space:nowrap;overflow:hidden}.line .icon{width:14px;height:14px}.value{font-weight:500;color:var(--text)}.quiet{color:var(--tertiary)}.day-badge{display:inline-grid;place-items:center;flex:none;height:18px;min-width:18px;padding:0 4px;border-radius:9px;background:var(--primary);color:var(--on-primary);font-size:10px;font-weight:600;line-height:1}.modes{display:flex;gap:6px;flex:none}.chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:var(--chip-h);min-width:var(--chip-h);border-radius:11px;padding:0 9px 0 7px;font-size:11px;font-weight:500;white-space:nowrap;background:var(--primary-bg);color:var(--primary)}.chip .icon{width:13px;height:13px}.chips-icons .chip{width:var(--chip-h);padding:0}.chips-icons .chip span{display:none}
 .footer{border-top:1px solid var(--line);padding-top:6px;display:flex;align-items:center;gap:8px;min-height:31px;font-size:12px;color:var(--secondary);white-space:nowrap}.start{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.sources{display:flex;gap:6px;flex:none}.heat-control{position:relative;width:24px;height:24px;flex:none}.heat-buttons{position:absolute;inset:0;display:flex}.heat-button{flex:1;min-width:0;height:100%}.heat{width:24px;height:24px;color:var(--off);overflow:visible}.glyph{fill:none;stroke:currentColor;stroke-width:2.3;stroke-linejoin:round}.on .glyph{fill:currentColor}.gas.on{color:var(--gas)}.electric.on{color:var(--electric)}.segment{fill:none;stroke:var(--off);opacity:.55;stroke-width:2.6;stroke-linecap:round}.gas .lit{stroke:var(--gas);opacity:1}.electric .lit{stroke:var(--electric);opacity:1}.activity{flex:none;overflow:hidden;text-overflow:ellipsis}.activity.heating{color:var(--text)}.timer,.wifi,.cloud,.clock{display:inline-flex;align-items:center;gap:4px;flex:none}.wifi .icon{width:18px;height:18px}.status{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}.warn{color:var(--warn)}.stale .number,.stale .unit,.stale .secondary{color:var(--tertiary)}.stale .tank{opacity:.45}.stale .right{color:var(--tertiary)}
@@ -262,6 +262,8 @@ class EzGeyserCard extends HTMLElement {
     // A new width is measured on the next frame, so the class changes never feed back into this observer's own loop.
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(([entry]) => { this._width = entry.contentRect.width; requestAnimationFrame(() => this._fitLayout()); }).observe(this._card);
+      // Observe the pill itself too: a smaller font can shrink it while the previous action size holds the row open.
+      this._badgeResizeObserver = new ResizeObserver(() => requestAnimationFrame(() => this._fitLayout()));
     }
   }
   _openDetails() {
@@ -316,7 +318,7 @@ class EzGeyserCard extends HTMLElement {
     } catch { return {device_id:''}; }
   }
   connectedCallback() {
-    this._loadRegistry(); this._subscribeRegistry();
+    this._loadRegistry(); this._subscribeRegistry(); this._fitLayout();
     // Widths measured with a fallback font are wrong once the web font arrives.
     if (typeof document !== 'undefined') {
       document.fonts?.ready.then(this._remeasure);
@@ -324,6 +326,7 @@ class EzGeyserCard extends HTMLElement {
     }
   }
   disconnectedCallback() {
+    this._badgeResizeObserver?.disconnect(); this._headerBadge = null;
     if (typeof document !== 'undefined') document.fonts?.removeEventListener('loadingdone',this._remeasure);
     this._registryEpoch = (this._registryEpoch || 0) + 1;
     this._registryUnsubscribe?.();
@@ -391,6 +394,17 @@ class EzGeyserCard extends HTMLElement {
   _fitLayout() {
     const card = this._card.querySelector('.card');
     if (!card?.getBoundingClientRect) return;
+    // The 3..21 paths plus their 2-unit stroke paint 20/24 of the canvas. A 120% SVG fills its square slot,
+    // sized to 95% of the measured badge height; 10 px between slots is also 10 px between the painted edges.
+    // Measure before the layout cache: font metrics can change the pill height without changing its text.
+    const badge = card.querySelector('.badge');
+    if (this._badgeResizeObserver && badge !== this._headerBadge) {
+      if (this._headerBadge) this._badgeResizeObserver.unobserve(this._headerBadge);
+      this._headerBadge = badge;
+      if (badge) this._badgeResizeObserver.observe(badge);
+    }
+    const badgeHeight = badge?.getBoundingClientRect().height;
+    if (badgeHeight > 0) card.style.setProperty('--header-action-size',`${badgeHeight * .95}px`);
     const key = `${this._width} ${this._layout}`;
     if (this._width === 0 || key === this._fitKey) return;
     const width = card.querySelector('.header').getBoundingClientRect().width;
