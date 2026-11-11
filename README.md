@@ -10,20 +10,52 @@ status. It only reads: it never changes anything on the geyser, and it never tal
 > It has been tested against responses captured from one geyser (Hybrid v2, firmware 1.4.0), and every value it shows
 > is what the geyser reports. **None of the values is a safety signal.**
 
-## Install with Marketplace (Home Assistant 2026.11+)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/dashboard-dark.png">
+  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle, heating on gas with Boost, heating on an electric element, and a top sensor fault" src="assets/screenshots/dashboard-light.png" width="744">
+</picture>
 
-1. Open **Settings > Marketplace > Add from link**.
-2. Enter `https://github.com/basghar/home-assistant-ezgeyser` and select **Add**. Connect GitHub if prompted.
-3. Choose **Integration** if asked, open **ezGeyser Direct**, and select **Install**.
-4. Restart Home Assistant when prompted. After updates, restart Home Assistant and refresh your browser.
+<sub>The bundled dashboard card, with simulated readings. More in [Screenshots](#screenshots).</sub>
 
-On Home Assistant 2026.10, use **HACS > ⋮ > Custom repositories**, add the same URL with type **Integration**,
-then download **ezGeyser Direct** and restart. Marketplace replaces HACS in Home Assistant 2026.11.
+## Install
 
-Manual install: copy `custom_components/ezgeyser/` into your Home Assistant `config/custom_components/` folder and
-restart.
+Requires Home Assistant 2026.10 or newer. ezGeyser Direct is not in the Marketplace's community catalog yet, so you
+add it from its GitHub link once. After that it installs and updates like any other Marketplace item.
 
-Requires Home Assistant 2026.10 or newer.
+### One click
+
+[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=basghar&repository=home-assistant-ezgeyser&category=integration)
+
+The button opens the repository page in your own Home Assistant (Marketplace on 2026.11, HACS on 2026.10). Confirm
+**Add custom repository**, then continue from step 4 below.
+
+### Marketplace, step by step (Home Assistant 2026.11+)
+
+1. In Home Assistant, open **Settings > Marketplace**. The first time, read the warning, select **I understand the
+   risks and agree**, then **Continue**.
+2. Open the **Add from link** tab.
+3. In **Add from a GitHub link**, enter `https://github.com/basghar/home-assistant-ezgeyser` as the **GitHub link**,
+   choose **Integration** as the **Type** if asked, and select **Add**. If Home Assistant asks you to **Connect
+   GitHub**, do so and add the link again.
+4. On the **ezGeyser Direct** page, select **Install**, check the version, and confirm.
+5. Select **Restart Home Assistant** when prompted, then refresh your browser.
+6. After the restart, select **Set up** on the same page, or follow [Add a geyser](#add-a-geyser).
+
+**Updates** show in **Settings > Marketplace > Updates**. Install the update, restart Home Assistant, and refresh
+your browser so the dashboard card loads its new version.
+
+**Uninstall:** open **ezGeyser Direct** in **Settings > Marketplace > Installed**, select **Uninstall**, and restart.
+Home Assistant warns you first if this also deletes your geysers' devices and entities.
+
+### HACS (Home Assistant 2026.10)
+
+Marketplace replaces HACS in Home Assistant 2026.11. On 2026.10, open **HACS > ⋮ > Custom repositories**, add the
+same URL with type **Integration**, download **ezGeyser Direct**, and restart.
+
+### Manual
+
+Copy `custom_components/ezgeyser/` into your Home Assistant `config/custom_components/` folder and restart. You
+update by copying it again.
 
 ## Add a geyser
 
@@ -69,6 +101,29 @@ Devices**), Home Assistant offers to rename its entity IDs to match.
 
 So far only idle values have been captured, so what each flag shows while the geyser is heating has not been checked.
 Never use a burner flag as proof that a flame is, or is not, burning.
+
+## Screenshots
+
+These show the real bundled card, but with **simulated readings**: the geysers and values are made up. Only idle
+values have been captured from a real geyser so far, so the heating screenshots show how the card displays those
+flags, not a confirmed heating cycle.
+
+| | |
+|---|---|
+| ![Kitchen geyser idle on gas: 51.8 °C top, 47.2 °C bottom, target 65 °C, Sensors OK](assets/screenshots/idle.png) | ![Ground Floor Bathroom heating on gas with both burner sides lit and Boost on, dark theme](assets/screenshots/gas-heating.png) |
+| **Idle.** Top reading large, bottom below it, the target on the right, and the selected source in the footer. | **Heating on gas, dark theme.** Both burner sides report flame, and Boost is active. |
+| ![Upstairs geyser heating with electric element 1 on](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault: a dash instead of the top reading and a hatched top half](assets/screenshots/sensor-fault.png) |
+| **Heating on an electric element.** The bolt lights, and the bar shows which of the two elements is on. | **Sensor fault, dark theme.** The faulty reading shows a dash, and the badge names the sensor. |
+| ![Garage geyser unreachable, showing muted last known values and when they were last available](assets/screenshots/unreachable.png) | |
+| **Unreachable.** Muted last known values and when Home Assistant last had them. | |
+
+In narrow dashboard columns the card switches to a stacked layout:
+
+![Three narrow ezGeyser cards side by side: Kitchen idle, Laundry heating on both elements, Rooftop heating on one burner side](assets/screenshots/narrow.png)
+
+The images are rendered from [`assets/screenshots/harness.html`](assets/screenshots/harness.html), which loads the
+card with simulated Home Assistant data. Run `assets/screenshots/capture.sh` (needs Google Chrome) to regenerate
+them after changing the card.
 
 ## Geyser overview card
 
