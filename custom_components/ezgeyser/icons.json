@@ -29,6 +29,9 @@
       },
       "heating_boost_mode": {
         "default": "mdi:rocket-launch"
+      },
+      "heating_vacation_mode": {
+        "default": "mdi:beach"
       }
     }
   }

@@ -46,6 +46,9 @@ BINARY_SENSORS: tuple[EzGeyserBinarySensorDescription, ...] = (
     EzGeyserBinarySensorDescription(
         key="heating_boost_mode", translation_key="heating_boost_mode", value_fn=lambda s: s.boost
     ),
+    EzGeyserBinarySensorDescription(
+        key="heating_vacation_mode", translation_key="heating_vacation_mode", value_fn=lambda s: s.vacation
+    ),
 )
 
 

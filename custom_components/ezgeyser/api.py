@@ -53,6 +53,7 @@ class QuickStatus:
     element2: bool
     source: int
     boost: bool
+    vacation: bool = False
     clock: int = 0
 
 
@@ -159,6 +160,7 @@ def parse_quick_status(body: bytes) -> QuickStatus:
         element2=_flag(raw, "heatingElement2"),
         source=source,
         boost=_flag(raw, "boostMode"),
+        vacation=_flag(raw, "vacationMode"),
         clock=clock if isinstance(clock, int) and not isinstance(clock, bool) else 0,
     )
 

@@ -18,6 +18,7 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .api import QuickStatus
 from .coordinator import EzGeyserConfigEntry, EzGeyserCoordinator
@@ -28,6 +29,10 @@ PARALLEL_UPDATES = 0
 # `source` codes confirmed on a device. Electric and Hybrid are options already, but their codes have not been observed
 # yet, so every code but 1 shows as unknown, with the raw code in the `source_code` attribute.
 SOURCE_CODES: dict[int, str] = {1: "gas"}
+
+NEXT_EVENT_ATTRIBUTES = ("target_temperature", "heating_off", "source", "source_code", "switch_over", "repeat_days")
+# The schedule's weekday flags, Sunday first: the order the Android app assumes, not yet verified on a device.
+WEEKDAYS = ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
 SOURCE_OPTIONS = ["gas", "electric", "hybrid", "unknown"]
 
 
@@ -99,7 +104,36 @@ class NextEventSensor(EzGeyserEntity, SensorEntity):
 
     @property
     def native_value(self) -> datetime | None:
-        return self.coordinator.next_event
+        event = self.coordinator.next_event
+        return event.at if event else None
+
+    @property
+    @override
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """The next event's settings, for the card's details and for automations.
+
+        `target_temperature` is in Home Assistant's temperature unit and None when the event turns heating off
+        (`heating_off`) or names no target. `repeat_days` is None for a one-off entry; its Sunday-first order is
+        unverified.
+        """
+        event = self.coordinator.next_event
+        if event is None:
+            return dict.fromkeys(NEXT_EVENT_ATTRIBUTES)
+        heating_off = event.target == 0 if event.target is not None else None
+        target = None
+        if event.target is not None and not heating_off:
+            unit = self.hass.config.units.temperature_unit
+            target = round(TemperatureConverter.convert(event.target, UnitOfTemperature.CELSIUS, unit), 1)
+        source = None if event.source_code is None else SOURCE_CODES.get(event.source_code, "unknown")
+        days = None if event.weekdays is None else [day for day, on in zip(WEEKDAYS, event.weekdays, strict=True) if on]
+        return {
+            "target_temperature": target,
+            "heating_off": heating_off,
+            "source": source,
+            "source_code": event.source_code,
+            "switch_over": event.switch_over,
+            "repeat_days": days,
+        }
 
 
 class EzGeyserSensor(EzGeyserEntity, SensorEntity):

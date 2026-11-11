@@ -1,6 +1,8 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from custom_components.ezgeyser.const import DOMAIN
+from custom_components.ezgeyser.schedule import NextEvent
+from custom_components.ezgeyser.sensor import NEXT_EVENT_ATTRIBUTES
 from freezegun.api import FrozenDateTimeFactory
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -9,6 +11,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 
 from .conftest import CLOUD_STATUS, DATA, HOST, MAC, QUICK_STATUS
 
@@ -25,6 +28,7 @@ ENTITY_IDS = {
     "binary_sensor.kitchen_heating_element_2": STATE_OFF,
     "sensor.kitchen_heating_source": "gas",
     "binary_sensor.kitchen_heating_boost_mode": STATE_OFF,
+    "binary_sensor.kitchen_heating_vacation_mode": STATE_OFF,
 }
 # Every unsmoothed reading; disabled by default, so they have no state until enabled.
 RAW_ENTITY_IDS = {"sensor.kitchen_temperature_top_raw", "sensor.kitchen_temperature_bottom_raw"}
@@ -46,7 +50,7 @@ def _answer(aioclient_mock: AiohttpClientMocker, quick_status: bytes | None = QU
         aioclient_mock.get(f"http://{HOST}/quickStatus", content=quick_status)
 
 
-async def test_setup_creates_one_named_device_with_fourteen_prefixed_entities(
+async def test_setup_creates_one_named_device_with_fifteen_prefixed_entities(
     hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
 ) -> None:
     await _setup(hass, entry)
@@ -197,3 +201,39 @@ async def test_unload_stops_polling(
 
     assert entry.state is ConfigEntryState.NOT_LOADED
     assert geyser.call_count == calls
+
+
+async def test_next_event_attributes_carry_the_schedule_settings(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
+) -> None:
+    await _setup(hass, entry)
+    coordinator = entry.runtime_data
+    entity_id = "sensor.kitchen_next_scheduled_event"
+    assert hass.states.get(entity_id).attributes["heating_off"] is None
+
+    at = datetime(2026, 11, 12, 1, 0, tzinfo=UTC)
+    coordinator.next_event = NextEvent(at, 60.0, 1, False, (True, True, True, True, True, True, True))
+    coordinator.async_update_listeners()
+    state = hass.states.get(entity_id)
+    assert state.state == "2026-11-12T01:00:00+00:00"
+    assert {key: state.attributes[key] for key in NEXT_EVENT_ATTRIBUTES} == {
+        "target_temperature": 60.0,
+        "heating_off": False,
+        "source": "gas",
+        "source_code": 1,
+        "switch_over": False,
+        "repeat_days": ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+    }
+
+    coordinator.next_event = NextEvent(at, 0.0, 3, True, (False, True, False, False, False, False, True))
+    coordinator.async_update_listeners()
+    attributes = hass.states.get(entity_id).attributes
+    assert (attributes["target_temperature"], attributes["heating_off"]) == (None, True)
+    assert (attributes["source"], attributes["source_code"], attributes["switch_over"]) == ("unknown", 3, True)
+    assert attributes["repeat_days"] == ["monday", "saturday"]
+
+    hass.config.units = US_CUSTOMARY_SYSTEM
+    coordinator.next_event = NextEvent(at, 60.0)
+    coordinator.async_update_listeners()
+    attributes = hass.states.get(entity_id).attributes
+    assert (attributes["target_temperature"], attributes["source"], attributes["repeat_days"]) == (140.0, None, None)

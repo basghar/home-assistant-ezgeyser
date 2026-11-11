@@ -6,36 +6,90 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname,'../custom_components/ezgeyser/www/ezgeyser-card.js'),'utf8');
 function setup(config = {}) {
   class Element {
-    attachShadow() { this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:() => this.card = {innerHTML:'',addEventListener(type,fn){this[type]=fn}}}; }
+    attachShadow() {
+      const dialog = this.dialog = {innerHTML:'',open:false,on:{},addEventListener(type,fn){this.on[type]=fn},showModal(){this.open=true},close(){this.open=false;this.on.close?.()}};
+      this.shadowRoot = {innerHTML:'',addEventListener(){},querySelector:selector => selector === 'dialog' ? dialog : this.card = {innerHTML:'',addEventListener(type,fn){this[type]=fn},querySelector(){}}};
+    }
     toggleAttribute() {}
     dispatchEvent(event) { this.event = event; }
   }
   const context = vm.createContext({HTMLElement:Element,window:{},customElements:{get(){},define(){}},CustomEvent:class {constructor(type,options){this.type=type;Object.assign(this,options);}},Intl,Date});
-  vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon};', context);
+  vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon,scheduleView};', context);
   const card = new context.api.EzGeyserCard();
   card._registry = Object.entries(context.api.FIELDS).map(([key,suffix]) => ({
     entity_id:`${['top','bottom','target','source','next_event'].includes(key) ? 'sensor' : 'binary_sensor'}.kitchen_${suffix}`,
     platform:'ezgeyser',device_id:'kitchen-device',unique_id:`mac_${suffix}`,
   }));
   card.setConfig({entity:'sensor.kitchen_temperature_top',name:'Kitchen',...config});
-  const values = {top:'51.8',bottom:'47.2',target:'65',source:'gas',top_ok:'on',bottom_ok:'on',burner_left:'off',burner_right:'off',element_1:'off',element_2:'off',boost:'off'};
+  const values = {top:'51.8',bottom:'47.2',target:'65',source:'gas',top_ok:'on',bottom_ok:'on',burner_left:'off',burner_right:'off',element_1:'off',element_2:'off',boost:'off',vacation:'off'};
   const states = Object.fromEntries(Object.entries(card._ids).map(([key,id]) => [id,{state:values[key],attributes:{unit_of_measurement:'°C',...(key==='source' ? {source_code:1}: {})},last_updated:'2026-11-11T00:00:00Z'}]));
-  let hass = {states,locale:{language:'en'},themes:{darkMode:false}};
+  let hass = {states,locale:{language:'en',time_zone:'server',time_format:'12'},config:{time_zone:'UTC',unit_system:{temperature:'°C'}},themes:{darkMode:false}};
   card.hass = hass;
-  return {card,api:context.api,update(changes){for(const [key,state] of Object.entries(changes)) states[card._ids[key]] = {...states[card._ids[key]],state};card.hass={...hass};return card.card.innerHTML;},html:()=>card.card.innerHTML};
+  return {card,api:context.api,
+    update(changes,attributes){for(const [key,state] of Object.entries(changes)) states[card._ids[key]] = {...states[card._ids[key]],state,...(attributes ? {attributes} : {})};card.hass={...hass};return card.card.innerHTML;},
+    html:()=>card.card.innerHTML};
 }
 test('idle, target, gas and electric bars, boost',() => {
   const t=setup(); assert.match(t.html(),/Sensors OK/);assert.match(t.html(),/Idle · Gas/);
   const html=t.update({burner_left:'on',element_2:'on',boost:'on'});
   assert.match(html,/Burner left side on/);assert.match(html,/Element 1 off, element 2 on/);assert.match(html,/>Heating</);assert.match(html,/>Boost</);
 });
-test('next scheduled event appears after target and boost',() => {
+const EVENT = {target_temperature:60,heating_off:false,source:'gas',source_code:1,switch_over:false,repeat_days:['sunday','monday','tuesday','wednesday','thursday','friday','saturday']};
+function tomorrowAtSix() { const now=new Date(); return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,6)).toISOString(); }
+test('right column: the target, then the next event with a +1 badge; modes move to the footer',() => {
   const t=setup();
-  const html=t.update({boost:'on',next_event:'2026-11-12T04:30:00Z'});
-  assert.ok(html.indexOf('Target 65') < html.indexOf('>Boost</'));
-  assert.ok(html.indexOf('>Boost</') < html.indexOf('Next Scheduled Event'));
-  assert.match(t.update({next_event:'unknown'}),/Next Scheduled Event<br>Unavailable/);
-  assert.doesNotMatch(t.update({top:'unavailable'}),/Next Scheduled Event/);
+  const html=t.update({boost:'on',vacation:'on'}) && t.update({next_event:tomorrowAtSix()},EVENT);
+  assert.match(html,/<span>Target<\/span><span class="value">65°C<\/span>/);
+  assert.match(html,/6:00 AM<\/span><span class="day-badge" aria-hidden="true">\+1<\/span><span class="quiet" aria-hidden="true">→<\/span><span class="value" aria-hidden="true">60°/);
+  assert.match(html,/aria-label="Next scheduled event tomorrow at 6:00 AM, target 60 degrees"/);
+  assert.match(html,/title="Tomorrow 6:00 AM: 60 °C, Gas, switch-over off"/);
+  assert.ok(html.indexOf('Target') < html.indexOf('6:00 AM'));
+  const footer=html.slice(html.indexOf('class="footer"'));
+  assert.match(footer,/<span class="modes">.*>Boost<.*>Vacation</);
+  assert.doesNotMatch(html,/Read-only|Sensor fault|Next Scheduled Event/);
+});
+test('an event that turns heating off says Off, and no event says No schedule',() => {
+  const t=setup();
+  const html=t.update({next_event:tomorrowAtSix()},{...EVENT,target_temperature:null,heating_off:true});
+  assert.match(html,/→<\/span><span class="value" aria-hidden="true">Off</);assert.match(html,/6:00 AM, heating off"/);assert.doesNotMatch(html,/0°/);
+  assert.match(t.update({next_event:'unknown'}),/No schedule/);
+  assert.doesNotMatch(t.update({top:'unavailable'}),/No schedule|6:00 AM/);
+  const n=setup();delete n.card._hass.states[n.card._ids.next_event];n.card._signature=null;n.card._render();
+  assert.match(n.html(),/<span class="line quiet">.*No schedule/);
+});
+test('today has no badge; days further ahead count up, in the server or browser zone',() => {
+  const {api}=setup();const now=new Date('2026-11-11T10:00:00Z');
+  const hass={locale:{language:'en',time_zone:'server',time_format:'24'},config:{time_zone:'Asia/Karachi',unit_system:{temperature:'°C'}}};
+  const view=(at,attributes=EVENT)=>api.scheduleView({state:at,attributes},hass,now);
+  assert.equal(view('2026-11-11T16:30:00Z').days,0);assert.equal(view('2026-11-11T16:30:00Z').time,'21:30');
+  assert.equal(view('2026-11-11T19:30:00Z').days,1); // 00:30 the next day in Karachi
+  assert.equal(view('2026-11-14T01:00:00Z').days,3);
+  assert.equal(view('2026-11-14T01:00:00Z',{...EVENT,repeat_days:['monday','tuesday','wednesday','thursday','friday']}).repeats,'Weekdays');
+  assert.equal(view('2026-11-14T01:00:00Z',{...EVENT,repeat_days:['sunday','wednesday']}).repeats,'Wed, Sun');
+  assert.equal(view('2026-11-14T01:00:00Z',{...EVENT,repeat_days:null}).repeats,'Once');
+  assert.equal(view('unknown'),null);
+});
+test('the event line opens a details window with every setting, and History opens more-info',() => {
+  const t=setup();t.update({next_event:tomorrowAtSix()},{...EVENT,switch_over:true,source:'unknown',source_code:3});
+  t.card.card.click({target:{closest:selector=>selector==='[data-action="schedule"]' ? {} : null}});
+  const dialog=t.card.dialog;assert.equal(dialog.open,true);
+  assert.match(dialog.innerHTML,/Tomorrow · .* · 6:00 AM/);assert.match(dialog.innerHTML,/<dt>Target<\/dt><dd>60 °C<\/dd>/);
+  assert.match(dialog.innerHTML,/<dd>Source 3 \(unverified\)<\/dd>/);assert.match(dialog.innerHTML,/<dt>Switch-over<\/dt><dd>On, gas to electric<\/dd>/);
+  assert.match(dialog.innerHTML,/<dt>Repeats<\/dt><dd>Every day<\/dd>/);
+  dialog.on.click({target:{closest:selector=>selector==='[data-entity]' ? {dataset:{entity:'next_event'}} : null}});
+  assert.equal(dialog.open,false);assert.equal(t.card.event.detail.entityId,t.card._ids.next_event);
+  t.card.card.click({target:{closest:selector=>selector==='[data-action="schedule"]' ? {} : null}});
+  dialog.on.click({target:dialog});assert.equal(dialog.open,false);
+  t.card.card.click({target:{closest:selector=>selector==='[data-action="schedule"]' ? {} : null}});
+  assert.equal(dialog.open,true);t.update({top:'unavailable'});assert.equal(dialog.open,false);
+});
+test('the heat-source rows can be turned off for a single-source geyser',() => {
+  const t=setup({show_heat_source:false});
+  assert.match(t.update({next_event:tomorrowAtSix()},{...EVENT,heating_off:true,target_temperature:null}),/title="Tomorrow 6:00 AM: heating off"/);
+  t.card._openDetails();
+  assert.doesNotMatch(t.card.dialog.innerHTML,/Heat source|Switch-over/);assert.match(t.card.dialog.innerHTML,/<dd>Heating off<\/dd>/);
+  assert.throws(()=>setup({show_heat_source:'no'}));
+  assert.equal(setup().api.EzGeyserCard.getConfigForm().schema.at(-1).name,'show_heat_source');
 });
 test('sensor faults stay faults and mask invalid numerical readings',() => {
   const t=setup();const html=t.update({top_ok:'off',top:'unknown'});
@@ -118,10 +172,10 @@ test('switching devices clears cached readings, and a registry failure is explic
 
 test('individual readings open their corresponding entity, including renamed entities',()=>{
   const t=setup({main:'bottom'});
-  for (const key of ['top','bottom','target','boost','next_event','source','burner_left','burner_right','element_1','element_2']) {
-    t.card._ids[key] = `${['boost','burner_left','burner_right','element_1','element_2'].includes(key) ? 'binary_sensor' : 'sensor'}.renamed_${key}`;
+  for (const key of ['top','bottom','target','boost','vacation','next_event','source','burner_left','burner_right','element_1','element_2']) {
+    t.card._ids[key] = `${['boost','vacation','burner_left','burner_right','element_1','element_2'].includes(key) ? 'binary_sensor' : 'sensor'}.renamed_${key}`;
     t.card._hass.states[t.card._ids[key]] = {state:'unknown',attributes:{}};
-    t.card.card.click({target:{closest:()=>({dataset:{entity:key}})}});
+    t.card.card.click({target:{closest:selector=>selector==='[data-entity]' ? {dataset:{entity:key}} : null}});
     assert.equal(t.card.event.detail.entityId,t.card._ids[key]);
   }
   t.card.event=undefined;

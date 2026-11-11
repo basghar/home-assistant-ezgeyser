@@ -1,6 +1,6 @@
 """Polls one geyser's `/quickStatus` every second, and checks now and then that the same geyser still answers."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 import time
 from typing import Any, override
@@ -19,7 +19,7 @@ from .const import (
     POLL_INTERVAL,
     TOLERATED_FAILURES,
 )
-from .schedule import next_event, parse_schedules
+from .schedule import NextEvent, next_event, parse_schedules
 from .smoothing import TemperatureFilter
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
         self._identity_due = utcnow()
         self._schedules_due = utcnow()
         self.schedules: list[dict[str, Any]] | None = None
-        self.next_event: datetime | None = None
+        self.next_event: NextEvent | None = None
         # The smoothed tank temperatures the temperature sensors show, by sensor key; `data` keeps the raw readings.
         self._filters = {"temperature_top": TemperatureFilter(), "temperature_bottom": TemperatureFilter()}
         self.temperatures: dict[str, float | None] = dict.fromkeys(self._filters)

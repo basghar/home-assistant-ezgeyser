@@ -4,4 +4,4 @@
 type: custom:ezgeyser-card
 device_id: YOUR_HOME_ASSISTANT_DEVICE_ID
 name: Kitchen
-# Defaults: main: top, element_count: 2, theme: auto
+# Defaults: main: top, element_count: 2, theme: auto, show_heat_source: true

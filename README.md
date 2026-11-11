@@ -12,7 +12,7 @@ status. It only reads: it never changes anything on the geyser, and it never tal
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/dashboard-dark.png">
-  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle, heating on gas with Boost, heating on an electric element, and a top sensor fault" src="assets/screenshots/dashboard-light.png" width="744">
+  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle, heating on gas with Boost, heating on an electric element, and a top sensor fault. Each shows its target and next scheduled event on the right" src="assets/screenshots/dashboard-light.png" width="744">
 </picture>
 
 <sub>The bundled dashboard card, with simulated readings. More in [Screenshots](#screenshots).</sub>
@@ -91,6 +91,8 @@ For a geyser named **Kitchen**:
 | `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2. |
 | `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the selected heating source. |
 | `binary_sensor.kitchen_heating_boost_mode` | **Active** / **Inactive**: boost mode. |
+| `binary_sensor.kitchen_heating_vacation_mode` | **Active** / **Inactive**: vacation mode. |
+| `sensor.kitchen_next_scheduled_event` | When the next enabled schedule starts: see [Next scheduled event](#next-scheduled-event). |
 | `sensor.kitchen_temperature_top_raw` | Disabled by default. The top sensor's reading every second, unsmoothed. |
 | `sensor.kitchen_temperature_bottom_raw` | Disabled by default. The bottom sensor's reading every second, unsmoothed. |
 
@@ -106,43 +108,38 @@ Never use a burner flag as proof that a flame is, or is not, burning.
 
 ## Screenshots
 
-These show the real card with **simulated readings**: the geysers and values are made up, and heating has not yet been
-seen on a real geyser (see [Entities](#entities)).
+The real card with **simulated readings**; the geysers and values are made up.
 
 | | |
 |---|---|
-| ![Kitchen geyser idle on gas: 51.8 °C top, 47.2 °C bottom, target 65 °C, next scheduled event Nov 12 at 6:00 AM, Sensors OK](assets/screenshots/idle.png) | ![Ground Floor Bathroom heating on gas with both burner sides lit and Boost on, dark theme](assets/screenshots/gas-heating.png) |
-| **Idle.** Top reading large, bottom below it, the target and next scheduled event on the right, and the selected source in the footer. | **Heating on gas, dark theme.** Both burner sides report flame, and Boost is active. |
-| ![Upstairs geyser heating with electric element 1 on](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault: a dash instead of the top reading, a hatched top half, and an unavailable next scheduled event](assets/screenshots/sensor-fault.png) |
-| **Heating on an electric element.** The bolt lights, and the bar shows which of the two elements is on. | **Sensor fault, dark theme.** The faulty reading shows a dash, and the badge names the sensor. With no schedule, the next event shows **Unavailable**. |
-| ![Garage geyser unreachable, showing muted last known values and when they were last available](assets/screenshots/unreachable.png) | |
-| **Unreachable.** Muted last known values and when Home Assistant last had them. | |
+| ![Kitchen idle on gas: 51.8 °C top, 47.2 °C bottom, target 65 °C, next event tomorrow 6:00 AM to 60°](assets/screenshots/idle.png) | ![Ground Floor Bathroom heating on gas with Boost, dark theme](assets/screenshots/gas-heating.png) |
+| **Idle** | **Heating on gas**, dark theme |
+| ![Upstairs heating on electric element 1](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault, dark theme](assets/screenshots/sensor-fault.png) |
+| **Heating on an element** | **Sensor fault**, dark theme |
+| ![Garage unreachable, with muted last known values](assets/screenshots/unreachable.png) | ![Next scheduled event details: today 9:30 PM, target 55 °C, Gas, switch-over on, weekdays](assets/screenshots/details.png) |
+| **Unreachable** | **Next event details** |
 
-In narrow dashboard columns the card stacks its readings:
+In narrow columns the card stacks its readings:
 
-![Three narrow ezGeyser cards side by side: Kitchen idle, Laundry heating on both elements, Rooftop heating on one burner side](assets/screenshots/narrow.png)
+![Three narrow cards: Kitchen idle, Laundry on both elements in vacation mode, Rooftop on one burner side](assets/screenshots/narrow.png)
 
-To regenerate the images after changing the card, run `assets/screenshots/capture.sh` (needs Google Chrome). It
-renders [`assets/screenshots/harness.html`](assets/screenshots/harness.html), which loads the card with simulated
-Home Assistant data.
+To regenerate them, run `assets/screenshots/capture.sh` (needs Google Chrome).
 
 ## Geyser overview card
 
 The integration includes the **ezGeyser overview** dashboard card
 ([`ezgeyser-card.js`](custom_components/ezgeyser/www/ezgeyser-card.js)) and registers it on its own: there are no
-files to copy and no resources to add. The card has no external dependencies, makes no network requests of its own,
-and has no controls.
+files to copy and no resources to add. It has no dependencies and makes no network requests of its own.
 
 ### Add the card to a dashboard
 
 1. Open your dashboard, select **Edit > Add card**, and search for **ezGeyser overview**.
-2. Pick your geyser under **Geyser**. Optionally set the name, main temperature, number of electric elements and
-   theme.
+2. Pick your geyser under **Geyser**. Optionally set the name, main temperature, number of electric elements, theme,
+   and whether schedule details show the heat source and switch-over.
 3. Save. Add one card per geyser.
 
 If the card is not in the list, restart Home Assistant, hard-refresh your browser, and check the logs for ezGeyser
-setup errors. Installations without Home Assistant's `frontend` skip the card. For individual flags and their history
-you can also use the built-in **Entities card**.
+setup errors. Installations without Home Assistant's `frontend` skip the card.
 
 ### Reading the card
 
@@ -151,18 +148,21 @@ you can also use the built-in **Entities card**.
   guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor reports a fault.
 - **Badge:** **Sensors OK**, the name of the faulty sensor, or **2 issues**. It covers only the two temperature
   sensors, nothing else.
+- **Right column:** the target, then the next scheduled event: its time, **+1** when it is tomorrow (**+2** and so
+  on), and the temperature it sets, or **Off**. Select it for its [details](#next-scheduled-event).
 - **Footer:** the flame is the burner, and its two bars are the two sides of the same burner. The bolt is the electric
   elements, one bar each. A filled icon means the flag is on, an outline means off, and dimmed means unknown. The text
   says **Heating**, **Idle** with the selected source (`Source N?` for an unconfirmed source code), or **Heating
-  status unknown**.
+  status unknown**, with **Boost** and **Vacation** tags on the right.
 - **Unreachable:** the last values this browser saw, muted, with the time Home Assistant last updated them. That is
   not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
 - **Loading entities**, **Registry unavailable** or **Check entities:** the card cannot find the selected geyser's
   entities.
-- Selecting the card (or Enter or Space) opens the main temperature's details and history.
+- **Selecting** a reading, a tank half, a tag, or the left or right half of the flame or bolt opens that entity's
+  details and history. ⓘ opens the main temperature.
 
-The card follows Home Assistant's light or dark mode, fits its own column width, and works in Sections and Masonry
-views. Wi-Fi, cloud, clock, vacation and timer status are not shown, because the integration does not provide them.
+Cards are all the same height, follow Home Assistant's light or dark mode, fit their column, and work in Sections and
+Masonry views. The integration does not provide Wi-Fi, cloud, clock or timer status.
 
 ### YAML configuration
 
@@ -179,9 +179,10 @@ name: Ground Floor Bathroom
 | `main` | `top` | Which sensor is the large reading: `top` or `bottom`. The tank halves never swap. |
 | `element_count` | `2` | `1` draws a single element bar, lit when either element flag is on. The card never guesses which elements are installed. |
 | `theme` | `auto` | `auto` follows Home Assistant; `light` or `dark` forces a palette. |
+| `show_heat_source` | `true` | `false` hides **Heat source** and **Switch-over** in the schedule details, for a gas-only or electric-only geyser. |
 
-The card finds the geyser's entities by device, so renaming the device or any entity never breaks it. Temperatures
-use your Home Assistant units. The same example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
+The card finds the geyser's entities by device, so renaming the device or any entity never breaks it. The same
+example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
 
 ### Upgrading from versions before 0.5.0
 
@@ -211,21 +212,29 @@ temperatures are therefore smoothed: a median of the last 5 readings drops one-o
 the scatter, and the shown value changes only once that average moves 0.2 °C. That brings each sensor down to about
 5 to 15 history rows an hour while the water cools or sits idle, and a few a minute while it heats.
 
-- The card and the entities still update every second. A real change shows within about 30 seconds, and the shown
-  value can be up to 0.2 °C from the average.
+- A real change shows within about 30 seconds, and the shown value can be up to 0.2 °C from the average. Nothing else
+  is smoothed.
 - A sensor fault shows as unknown at once. After 30 seconds without a reading, smoothing starts over.
-- Only the two tank temperatures are smoothed. The target, heating source, scheduled event and every on/off sensor
-  show what the geyser reports.
 - For every reading, enable **Temperature top raw** or **Temperature bottom raw** (**Settings > Devices > your geyser
   > entities not shown**). Each stores about 2,600 history rows an hour while enabled.
 
-Select a temperature, target, Boost, heating source, or scheduled event on the card to open its entity details and history. Select the left or right half of a gas or electric icon to open the corresponding flame or element sensor.
+### Next scheduled event
 
-The card shows **Next Scheduled Event** beneath the target (and Boost when active). Schedules are read once a minute.
-The calculation follows the Android app: the device clock is treated as local wall time, and weekday flags are assumed
-to start on Sunday; that weekday order has not been verified. Home Assistant must use the same local timezone as the
-geyser, and a clock discrepancy over two minutes makes the event unavailable. An empty or unreadable schedule also
-shows an unavailable event. Schedules are edited in the official ezGeyser app.
+Schedules are read once a minute and edited only in the official ezGeyser app. The device clock is taken as local wall
+time, so Home Assistant must use the geyser's time zone; a clock more than two minutes off, or an empty or unreadable
+schedule, makes the event unavailable. Weekday flags are assumed to start on Sunday, as in the Android app; that order
+is unverified.
+
+Selecting the event on the card opens a window with what that schedule sets; **History** there opens the sensor. The
+same values are the sensor's attributes, each `null` when the schedule leaves it out or there is no event:
+
+| Attribute | Value |
+|---|---|
+| `target_temperature` | In your temperature unit; `null` when the event turns heating off. |
+| `heating_off` | `true` when the scheduled target is 0. |
+| `source`, `source_code` | As for the heating source sensor. |
+| `switch_over` | `true` when the geyser may switch over from gas to electric. |
+| `repeat_days` | `sunday` to `saturday`; `null` for a one-off schedule. |
 
 ## Safety
 

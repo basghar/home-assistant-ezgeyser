@@ -1,5 +1,6 @@
 """Calculate reliable daily schedule times using the geyser's wall clock."""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 import json
 from typing import Any
@@ -17,8 +18,52 @@ def parse_schedules(body: bytes) -> list[dict[str, Any]]:
     return raw
 
 
-def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime) -> datetime | None:
-    """Return an instant only when all enabled schedules can be interpreted safely."""
+@dataclass(frozen=True, slots=True)
+class NextEvent:
+    """When the next schedule starts and what it sets. A field is None when the entry does not name it.
+
+    `weekdays` is the entry's seven repeat flags, Sunday first (unverified, as in the Android app); None for a one-off.
+    """
+
+    at: datetime
+    target: float | None
+    source_code: int | None = None
+    switch_over: bool | None = None
+    weekdays: tuple[bool, ...] | None = None
+
+
+def _variable(schedule: dict[str, Any], name: str) -> float | None:
+    """A `targetVariables` value; None when it is missing or not a number."""
+    variables = schedule.get("targetVariables")
+    if not isinstance(variables, list):
+        return None
+    for variable in variables:
+        if isinstance(variable, dict) and variable.get("targetVariableId") == name:
+            value = variable.get("value")
+            return float(value) if isinstance(value, int | float) and not isinstance(value, bool) else None
+    return None
+
+
+def scheduled_target(schedule: dict[str, Any]) -> float | None:
+    """The entry's `temperatureTarget` in °C; 0 turns heating off."""
+    return _variable(schedule, "temperatureTarget")
+
+
+def _event(at: datetime, schedule: dict[str, Any]) -> NextEvent:
+    source = _variable(schedule, "source")
+    switch_over = _variable(schedule, "switchOver")
+    days = schedule.get("weekdays")
+    return NextEvent(
+        at=at,
+        target=scheduled_target(schedule),
+        source_code=int(source) if source is not None and source.is_integer() else None,
+        switch_over={0.0: False, 1.0: True}.get(switch_over) if switch_over is not None else None,
+        weekdays=tuple(days) if schedule.get("repetitionIsEnabled") and isinstance(days, list) else None,
+    )
+
+
+def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime) -> NextEvent | None:
+    """Return an event only when all enabled schedules can be interpreted safely."""
     try:
         device_now = datetime.fromtimestamp(device_clock, UTC).replace(tzinfo=None)
     except ValueError, OSError, OverflowError:
@@ -52,9 +97,11 @@ def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime
                 continue
             candidate = datetime.combine(date, start)
             if candidate > device_now:
-                candidates.append(candidate)
+                candidates.append((candidate, schedule))
                 break
     if not candidates:
         return None
+    # The first entry wins a tie, as listed by the firmware.
+    first, schedule = min(candidates, key=lambda candidate: candidate[0])
     # Preserve the device-clock offset, so the instant represents when its clock reaches the event.
-    return now.astimezone(UTC).replace(microsecond=0) + (min(candidates) - device_now)
+    return _event(now.astimezone(UTC).replace(microsecond=0) + (first - device_now), schedule)

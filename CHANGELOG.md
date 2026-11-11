@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.5 (2026-11-11)
+
+- Redesign the card's right column: always two end-aligned lines, the current target and the next scheduled event as
+  "6:00 AM +1 → 60°". The "+1" badge marks tomorrow (+2 and so on further ahead); an event that turns heating off
+  shows "→ Off", and no event shows "No schedule". Screen readers hear the whole line as one sentence.
+- Select the event line for a details window: date and time, target, heat source, switch-over from gas to electric,
+  and repeat days. A new card option, **Show heat source and switch-over in schedule details**, hides those two rows
+  for single-source geysers. On by default.
+- Add the next event's settings as attributes of **Next scheduled event**: `target_temperature` (in your temperature
+  unit), `heating_off`, `source`, `source_code`, `switch_over` and `repeat_days`.
+- Add **Heating vacation mode**, a read-only binary sensor from `/quickStatus`.
+- Move the Boost and new Vacation tags to the footer, and remove "Read-only" and "Sensor fault" from it. Every card is
+  now the same height.
+- The tank bar now spans exactly the main reading and the line under it.
+- Fix the card failing to show its last update time when an optional entity, such as the new vacation sensor, is
+  missing or disabled.
+
 ## 0.5.4 (2026-11-11)
 
 - Smooth the top and bottom tank temperatures: a median of the last 5 readings, a 10-second average and a 0.2 °C

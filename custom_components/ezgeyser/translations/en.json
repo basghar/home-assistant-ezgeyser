@@ -95,7 +95,48 @@
         }
       },
       "next_scheduled_event": {
-        "name": "Next scheduled event"
+        "name": "Next scheduled event",
+        "state_attributes": {
+          "target_temperature": {
+            "name": "Target temperature"
+          },
+          "heating_off": {
+            "name": "Turns heating off",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "source": {
+            "name": "Heat source",
+            "state": {
+              "gas": "Gas",
+              "unknown": "Unknown"
+            }
+          },
+          "source_code": {
+            "name": "Heat source code"
+          },
+          "switch_over": {
+            "name": "Switch-over to electric",
+            "state": {
+              "true": "On",
+              "false": "Off"
+            }
+          },
+          "repeat_days": {
+            "name": "Repeats on",
+            "state": {
+              "sunday": "Sunday",
+              "monday": "Monday",
+              "tuesday": "Tuesday",
+              "wednesday": "Wednesday",
+              "thursday": "Thursday",
+              "friday": "Friday",
+              "saturday": "Saturday"
+            }
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -143,6 +184,13 @@
       },
       "heating_boost_mode": {
         "name": "Heating boost mode",
+        "state": {
+          "on": "Active",
+          "off": "Inactive"
+        }
+      },
+      "heating_vacation_mode": {
+        "name": "Heating vacation mode",
         "state": {
           "on": "Active",
           "off": "Inactive"
