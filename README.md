@@ -45,17 +45,21 @@ For a geyser named **Kitchen**:
 
 | Entity ID | Shows |
 |---|---|
-| `sensor.kitchen_temperature_top` | Top tank sensor, °C. Unknown while the sensor reports it is not OK. |
-| `binary_sensor.kitchen_temperature_top_ok` | Whether the top sensor reading is valid. |
-| `sensor.kitchen_temperature_bottom` | Bottom tank sensor, °C. Unknown while the sensor reports it is not OK. |
-| `binary_sensor.kitchen_temperature_bottom_ok` | Whether the bottom sensor reading is valid. |
+| `sensor.kitchen_temperature_top` | Top tank sensor, °C. Unknown while the sensor reports a fault. |
+| `binary_sensor.kitchen_temperature_top_ok` | **OK** / **Fault**: whether the top sensor reading is valid. |
+| `sensor.kitchen_temperature_bottom` | Bottom tank sensor, °C. Unknown while the sensor reports a fault. |
+| `binary_sensor.kitchen_temperature_bottom_ok` | **OK** / **Fault**: whether the bottom sensor reading is valid. |
 | `sensor.kitchen_temperature_target` | Target temperature of the running timer or preset, °C. 0 most likely means no target. |
-| `binary_sensor.kitchen_heating_burner_1` | Burner flame sensor 1 (one end of the burner), as reported. |
-| `binary_sensor.kitchen_heating_burner_2` | Burner flame sensor 2 (the other end of the same burner), as reported. |
-| `binary_sensor.kitchen_heating_element_1` | Electric heating element 1, as reported. |
-| `binary_sensor.kitchen_heating_element_2` | Electric heating element 2, as reported. |
-| `sensor.kitchen_heating_source` | The selected heating source: `Gas`, or `Code N (unverified)` for codes not confirmed yet. |
-| `binary_sensor.kitchen_heating_boost_mode` | Boost mode, as reported. |
+| `binary_sensor.kitchen_heating_burner_1` | **Flame** / **No flame**: flame sensor 1, at one end of the burner. |
+| `binary_sensor.kitchen_heating_burner_2` | **Flame** / **No flame**: flame sensor 2, at the other end of the same burner. |
+| `binary_sensor.kitchen_heating_element_1` | **Heating** / **Off**: electric heating element 1. |
+| `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2. |
+| `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the selected heating source. |
+| `binary_sensor.kitchen_heating_boost_mode` | **Active** / **Inactive**: boost mode. |
+
+The labels are for display. In automations and templates, binary sensors are `on` (the first label) or `off`, and the
+heating source is `gas`, `electric`, `hybrid` or `unknown`. Only the Gas code is confirmed so far; any other code shows
+as Unknown, and its raw value is in the `source_code` attribute.
 
 The `temperature_` and `heating_` parts group the entities by kind. If you rename the device later (**Settings >
 Devices**), Home Assistant offers to rename its entity IDs to match.

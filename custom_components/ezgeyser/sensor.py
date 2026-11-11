@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import override
+from typing import Any, override
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -20,16 +20,17 @@ from .coordinator import EzGeyserConfigEntry, EzGeyserCoordinator
 from .entity import EzGeyserEntity
 
 PARALLEL_UPDATES = 0
-GAS_SOURCE_CODE = 1  # The only `source` code confirmed so far; others are shown as codes.
+
+# `source` codes confirmed on a device. Electric and Hybrid are options already, but their codes have not been observed
+# yet, so every code but 1 shows as unknown, with the raw code in the `source_code` attribute.
+SOURCE_CODES: dict[int, str] = {1: "gas"}
+SOURCE_OPTIONS = ["gas", "electric", "hybrid", "unknown"]
 
 
 @dataclass(frozen=True, kw_only=True)
 class EzGeyserSensorDescription(SensorEntityDescription):
     value_fn: Callable[[QuickStatus], StateType]
-
-
-def _source(code: int) -> str:
-    return "Gas" if code == GAS_SOURCE_CODE else f"Code {code} (unverified)"
+    attributes_fn: Callable[[QuickStatus], dict[str, Any]] | None = None
 
 
 def _temperature(key: str, value_fn: Callable[[QuickStatus], StateType]) -> EzGeyserSensorDescription:
@@ -52,7 +53,10 @@ SENSORS: tuple[EzGeyserSensorDescription, ...] = (
     EzGeyserSensorDescription(
         key="heating_source",
         translation_key="heating_source",
-        value_fn=lambda status: _source(status.source),
+        device_class=SensorDeviceClass.ENUM,
+        options=SOURCE_OPTIONS,
+        value_fn=lambda status: SOURCE_CODES.get(status.source, "unknown"),
+        attributes_fn=lambda status: {"source_code": status.source},
     ),
 )
 
@@ -77,3 +81,9 @@ class EzGeyserSensor(EzGeyserEntity, SensorEntity):
     @override
     def native_value(self) -> StateType:
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    @override
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        attributes_fn = self.entity_description.attributes_fn
+        return attributes_fn(self.coordinator.data) if attributes_fn else None

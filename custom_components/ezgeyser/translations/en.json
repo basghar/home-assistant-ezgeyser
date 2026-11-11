@@ -75,30 +75,69 @@
         "name": "Temperature target"
       },
       "heating_source": {
-        "name": "Heating source"
+        "name": "Heating source",
+        "state": {
+          "gas": "Gas",
+          "electric": "Electric",
+          "hybrid": "Hybrid",
+          "unknown": "Unknown"
+        },
+        "state_attributes": {
+          "source_code": {
+            "name": "Source code"
+          }
+        }
       }
     },
     "binary_sensor": {
       "temperature_top_ok": {
-        "name": "Temperature top OK"
+        "name": "Temperature top OK",
+        "state": {
+          "on": "OK",
+          "off": "Fault"
+        }
       },
       "temperature_bottom_ok": {
-        "name": "Temperature bottom OK"
+        "name": "Temperature bottom OK",
+        "state": {
+          "on": "OK",
+          "off": "Fault"
+        }
       },
       "heating_burner_1": {
-        "name": "Heating burner 1"
+        "name": "Heating burner 1",
+        "state": {
+          "on": "Flame",
+          "off": "No flame"
+        }
       },
       "heating_burner_2": {
-        "name": "Heating burner 2"
+        "name": "Heating burner 2",
+        "state": {
+          "on": "Flame",
+          "off": "No flame"
+        }
       },
       "heating_element_1": {
-        "name": "Heating element 1"
+        "name": "Heating element 1",
+        "state": {
+          "on": "Heating",
+          "off": "Off"
+        }
       },
       "heating_element_2": {
-        "name": "Heating element 2"
+        "name": "Heating element 2",
+        "state": {
+          "on": "Heating",
+          "off": "Off"
+        }
       },
       "heating_boost_mode": {
-        "name": "Heating boost mode"
+        "name": "Heating boost mode",
+        "state": {
+          "on": "Active",
+          "off": "Inactive"
+        }
       }
     }
   },

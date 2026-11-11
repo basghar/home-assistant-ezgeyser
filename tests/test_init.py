@@ -22,7 +22,7 @@ ENTITY_IDS = {
     "binary_sensor.kitchen_heating_burner_2": STATE_OFF,
     "binary_sensor.kitchen_heating_element_1": STATE_OFF,
     "binary_sensor.kitchen_heating_element_2": STATE_OFF,
-    "sensor.kitchen_heating_source": "Gas",
+    "sensor.kitchen_heating_source": "gas",
     "binary_sensor.kitchen_heating_boost_mode": STATE_OFF,
 }
 
@@ -97,6 +97,23 @@ async def test_polls_every_second_and_unknown_temperature_while_its_sensor_is_no
     assert hass.states.get("sensor.kitchen_temperature_top").state == STATE_UNKNOWN
     assert hass.states.get("binary_sensor.kitchen_temperature_top_ok").state == STATE_OFF
     assert hass.states.get("binary_sensor.kitchen_heating_burner_2").state == STATE_ON
+
+
+async def test_heating_source_is_an_enum_and_an_unconfirmed_code_is_unknown_with_the_code_kept(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    await _setup(hass, entry)
+    source = hass.states.get("sensor.kitchen_heating_source")
+    assert source.attributes["options"] == ["gas", "electric", "hybrid", "unknown"]
+    assert source.attributes["source_code"] == 1
+
+    _answer(geyser, QUICK_STATUS.replace(b'"source":1', b'"source":3'))
+    freezer.tick(timedelta(seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    source = hass.states.get("sensor.kitchen_heating_source")
+    assert (source.state, source.attributes["source_code"]) == ("unknown", 3)
 
 
 async def test_two_missed_reads_are_tolerated_and_the_third_makes_it_unavailable(
