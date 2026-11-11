@@ -67,6 +67,89 @@ Devices**), Home Assistant offers to rename its entity IDs to match.
 So far only idle values have been captured, so what each flag shows while the geyser is heating has not been checked.
 Never use a burner flag as proof that a flame is, or is not, burning.
 
+## Geyser overview card
+
+The responsive **ezGeyser overview** custom dashboard card is bundled at
+[`custom_components/ezgeyser/www/ezgeyser-card.js`](custom_components/ezgeyser/www/ezgeyser-card.js).
+It uses Home Assistant's [standard custom-card API](https://contributors.home-assistant.io/frontend/custom-ui/card/),
+with no JavaScript dependencies, external fonts, network requests or device controls.
+
+### Install the card
+
+1. Copy `custom_components/ezgeyser/www/ezgeyser-card.js` to `www/ezgeyser-card.js` inside your Home Assistant
+   configuration folder (create `www` if necessary). Restart Home Assistant if you just created that folder.
+2. Enable **Advanced mode** in your Home Assistant user profile. Open **Settings > Dashboards > three-dot menu >
+   Resources**, add `/local/ezgeyser-card.js?v=1`, and choose **JavaScript module**.
+3. Edit a dashboard, select **Add card > Manual**, and paste:
+
+   ```yaml
+   type: custom:ezgeyser-card
+   entity: sensor.kitchen_temperature_top
+   name: Kitchen
+   ```
+
+Repeat for each geyser. A copyable example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
+The card also appears as **ezGeyser overview** in the card picker after the resource loads; configuration uses YAML.
+After card updates, copy the new file again, increase the resource URL's `v` value and refresh your browser.
+Installing the integration does not register the card resource or change your dashboards automatically.
+
+### Appearance and semantics
+
+The card follows Home Assistant light/dark mode, with the Android app's tonal surfaces, health pill, large main
+reading, secondary sensor, target, Boost chip and heating footer. The top and bottom halves of its tank bar always
+represent the physical top and bottom sensors. Temperature colours interpolate continuously from blue through
+teal, amber and orange to red. An additional bounded lightness difference emphasizes relative top/bottom differences
+(as small as 1 °C); colours are illustrative rather than a calibrated scale. Numeric values and a descriptive tank
+label/tooltip provide the precise readings. Invalid sensors use an amber dash and a grey hatched half.
+
+Both heat-source icons are custom inline SVGs using the specified paths. A lit flame means a reported burner flag is
+on; the two bars show the left/right sides of the **same burner**. The bolt and its bars show the elements. Off glyphs
+are outlines. Unknown heating flags keep icons dimmed and show “Heating status unknown.” Every icon has an accessible
+label. Card click, Enter or Space opens Home Assistant's main temperature entity details/history.
+
+The card wraps by **its own width**, including narrow dashboard columns. It has no fixed height, uses a compact
+three-row layout, and supports Home Assistant Sections and Masonry views. The health badge says **Sensors OK** for
+valid temperature sensors, names a single sensor fault, or counts both faults. It does not imply other health checks.
+
+Unavailable entities show **Unreachable** and muted last-known readings when this card has seen them during the
+current browser session. The displayed “Last available” time is Home Assistant's entity update timestamp, not the
+last successful device poll. On a fresh page with no previous readings, values show dashes. Missing entity IDs show
+**Check entities**. There is no retry button because the integration already retries and exposes no refresh action.
+Wi-Fi, cloud, clock, vacation and timer entities are not currently exposed, so their icons and values are omitted.
+
+### Configuration
+
+`entity` is the top or bottom sensor with its original `_temperature_top` / `_temperature_bottom` suffix; the card
+uses that prefix to resolve the other entities. `name` is optional (otherwise it uses the HA device name when
+available). `main: bottom` swaps the large and secondary readings; it does **not** swap the tank halves. The integration
+does not expose the endpoint's `main`, so this is an explicit display setting. `element_count: 1` renders a single
+solid element bar (either reported element flag lights it); the default is two. The card never infers installed
+hardware from an element remaining off. `theme: auto` follows HA; `light` or `dark` forces a palette.
+
+For renamed IDs, override any inferred field with `entities`. If the anchor sensor has also lost its original suffix,
+omit `entity` and supply all mappings:
+
+```yaml
+type: custom:ezgeyser-card
+name: Kitchen
+entities:
+  top: sensor.kitchen_temperature_top
+  bottom: sensor.kitchen_temperature_bottom
+  target: sensor.kitchen_temperature_target
+  source: sensor.kitchen_heating_source
+  top_ok: binary_sensor.kitchen_temperature_top_ok
+  bottom_ok: binary_sensor.kitchen_temperature_bottom_ok
+  burner_left: binary_sensor.kitchen_heating_burner_1
+  burner_right: binary_sensor.kitchen_heating_burner_2
+  element_1: binary_sensor.kitchen_heating_element_1
+  element_2: binary_sensor.kitchen_heating_element_2
+  boost: binary_sensor.kitchen_heating_boost_mode
+```
+
+Temperatures use HA's display units; colour calculations and zero-target detection convert back to Celsius.
+Source code 1 is Gas; other raw codes display as `Source N?`, without guessing Electric/Hybrid.
+You can also use the built-in **Entities card** to show individual flags and their history.
+
 ## How it reads the geyser
 
 - Every geyser is read **once a second**, the same rate as the geyser's own web page. Only one request is in flight at

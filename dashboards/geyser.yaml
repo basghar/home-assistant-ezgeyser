@@ -1,0 +1,7 @@
+# First install/register ezgeyser-card.js as described in README.md.
+# Paste into Add card > Manual. Use your actual entity ID and device name.
+type: custom:ezgeyser-card
+entity: sensor.kitchen_temperature_top
+name: Kitchen
+# Defaults: main: top, element_count: 2, theme: auto
+# For renamed entity IDs, see the explicit entities mapping in README.md.
