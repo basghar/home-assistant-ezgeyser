@@ -6,6 +6,18 @@
       },
       "heating_source": {
         "default": "mdi:swap-horizontal"
+      },
+      "network_wifi_signal": {
+        "default": "mdi:wifi",
+        "state": {
+          "excellent": "mdi:wifi-strength-4",
+          "good": "mdi:wifi-strength-3",
+          "fair": "mdi:wifi-strength-2",
+          "weak": "mdi:wifi-strength-1-alert"
+        }
+      },
+      "timer_remaining": {
+        "default": "mdi:timer-sand"
       }
     },
     "binary_sensor": {
@@ -32,6 +44,18 @@
       },
       "heating_vacation_mode": {
         "default": "mdi:beach"
+      },
+      "network_cloud_connection": {
+        "default": "mdi:cloud-check-outline",
+        "state": {
+          "off": "mdi:cloud-off-outline"
+        }
+      },
+      "device_clock": {
+        "default": "mdi:clock-check-outline",
+        "state": {
+          "on": "mdi:clock-alert-outline"
+        }
       }
     }
   }

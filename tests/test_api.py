@@ -33,11 +33,36 @@ def test_parse_quick_status_reads_the_captured_fixture() -> None:
     )
     assert (status.burner1, status.burner2, status.element1, status.element2) == (False,) * 4
     assert (status.source, status.boost) == (1, False)
+    assert (status.rssi, status.cloud, status.remaining, status.clock) == (-64, True, 0, 1794329436)
+
+
+def test_parse_quick_status_without_the_optional_fields_reads_the_rest() -> None:
+    raw = json.loads(QUICK_STATUS)
+    for field in ("rssi", "mqtt", "remaining"):
+        del raw[field]
+
+    status = parse_quick_status(json.dumps(raw).encode())
+
+    assert (status.rssi, status.cloud, status.remaining) == (None, None, None)
+    assert status.top == 43.1
 
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("topOk", 2), ("burner1Status", True), ("boostMode", "1"), ("top", "43.1"), ("top", None), ("source", 1.5)],
+    [
+        ("topOk", 2),
+        ("burner1Status", True),
+        ("boostMode", "1"),
+        ("top", "43.1"),
+        ("top", None),
+        ("source", 1.5),
+        ("rssi", "-64"),
+        ("rssi", -64.5),
+        ("mqtt", 2),
+        ("mqtt", True),
+        ("remaining", "25"),
+        ("remaining", False),
+    ],
 )
 def test_parse_quick_status_value_of_the_wrong_kind_is_refused(field: str, value: Any) -> None:
     with pytest.raises(NotAGeyser, match=field):

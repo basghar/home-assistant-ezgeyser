@@ -7,6 +7,9 @@ from typing import Any
 
 from .api import NotAGeyser
 
+# The device clock may be this far from Home Assistant's before it counts as off, as in the Android app.
+CLOCK_TOLERANCE = timedelta(minutes=2)
+
 
 def parse_schedules(body: bytes) -> list[dict[str, Any]]:
     try:
@@ -62,14 +65,26 @@ def _event(at: datetime, schedule: dict[str, Any]) -> NextEvent:
     )
 
 
-def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime) -> NextEvent | None:
-    """Return an event only when all enabled schedules can be interpreted safely."""
+def device_wall_clock(device_clock: int) -> datetime | None:
+    """The geyser's `now`: its local wall time written as if it were UTC, so read without a zone. None if unsent (0)."""
+    if device_clock <= 0:
+        return None
     try:
-        device_now = datetime.fromtimestamp(device_clock, UTC).replace(tzinfo=None)
+        return datetime.fromtimestamp(device_clock, UTC).replace(tzinfo=None)
     except ValueError, OSError, OverflowError:
         return None
-    local_now = now.replace(tzinfo=None)
-    if abs((device_now - local_now).total_seconds()) > 120:
+
+
+def clock_off(device_clock: int, now: datetime) -> bool | None:
+    """Whether the device clock is over `CLOCK_TOLERANCE` from `now`, Home Assistant's local time; None if unsent."""
+    device_now = device_wall_clock(device_clock)
+    return None if device_now is None else abs(device_now - now.replace(tzinfo=None)) > CLOCK_TOLERANCE
+
+
+def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime) -> NextEvent | None:
+    """Return an event only when all enabled schedules can be interpreted safely."""
+    device_now = device_wall_clock(device_clock)
+    if device_now is None or clock_off(device_clock, now):
         return None
     candidates = []
     for schedule in schedules:

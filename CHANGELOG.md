@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.0 (2026-11-11)
+
+- Add five read-only entities from fields `/quickStatus` already sends, with no new requests: **Network Wi-Fi
+  signal** (Excellent, Good, Fair or Weak, at the Android app's -50/-60/-70 dBm bands), **Network Wi-Fi RSSI** in dBm
+  (disabled by default), **Network cloud connection**, **Device clock** (a problem while the geyser's clock is more
+  than 2 minutes from Home Assistant's) and **Timer remaining** (the raw number; its unit is unverified). All but the
+  timer are diagnostic. A firmware that leaves one of these fields out still works; only that entity is unknown.
+- Keep the last schedules read when an `/api/schedules` read fails or is unreadable, as the Android app does, instead of
+  showing "No schedule" until the next read a minute later.
+- Card: a bigger reading (36 px) and tank bar; a right column of the
+  target, the next event and, while on, the Boost (now a rocket) and Vacation chips; Wi-Fi level, cloud link and a
+  clock warning at the end of the footer; the timer's time left while it runs. Every card keeps the same height, with
+  the right column always centred.
+- The badge now covers connectivity too: **All OK**, one problem by name (**Top sensor**, **Bottom sensor**, **Weak
+  Wi-Fi**, **Cloud offline**, **Clock off**), or **N issues**.
+- The card adapts from measured widths instead of its column width: in a narrow card the chips lose their words, then
+  the Wi-Fi word and the timer's text are left out, then the state text is shortened. Text no longer shrinks. Cards
+  narrower than about 270 px always stack their readings, so cards side by side keep the same height.
+
 ## 0.5.5 (2026-11-11)
 
 - Redesign the card's right column: always two end-aligned lines, the current target and the next scheduled event as

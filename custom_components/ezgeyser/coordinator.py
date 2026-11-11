@@ -19,7 +19,7 @@ from .const import (
     POLL_INTERVAL,
     TOLERATED_FAILURES,
 )
-from .schedule import NextEvent, next_event, parse_schedules
+from .schedule import NextEvent, clock_off, next_event, parse_schedules
 from .smoothing import TemperatureFilter
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,8 +46,11 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
         self._failures = 0
         self._identity_due = utcnow()
         self._schedules_due = utcnow()
+        # The last schedules read; a failed or unreadable read keeps them, as in the Android app.
         self.schedules: list[dict[str, Any]] | None = None
         self.next_event: NextEvent | None = None
+        # Whether the device clock was off when the last answer arrived; None when the geyser sent no clock.
+        self.clock_off: bool | None = None
         # The smoothed tank temperatures the temperature sensors show, by sensor key; `data` keeps the raw readings.
         self._filters = {"temperature_top": TemperatureFilter(), "temperature_bottom": TemperatureFilter()}
         self.temperatures: dict[str, float | None] = dict.fromkeys(self._filters)
@@ -76,9 +79,13 @@ class EzGeyserCoordinator(DataUpdateCoordinator[QuickStatus]):
             self._schedules_due = utcnow() + timedelta(minutes=1)
             try:
                 self.schedules = parse_schedules(await self.client.schedules())
-            except GeyserError:
-                self.schedules = None
-        self.next_event = next_event(self.schedules, status.clock, local_now()) if self.schedules is not None else None
+            except GeyserError as error:
+                # A timeout or a garbled body is a struggling geyser, not an empty schedule (that reads as `[]`). The
+                # identity check, not this read, catches another device at the address.
+                _LOGGER.debug("Keeping the last schedules read: %s", error)
+        now = local_now()
+        self.clock_off = clock_off(status.clock, now)
+        self.next_event = next_event(self.schedules, status.clock, now) if self.schedules is not None else None
         at = time.monotonic()
         for key, reading in (
             ("temperature_top", status.top if status.top_ok else None),

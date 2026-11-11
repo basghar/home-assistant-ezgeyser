@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta, timezone
 
-from custom_components.ezgeyser.schedule import NextEvent, next_event
+from custom_components.ezgeyser.schedule import NextEvent, clock_off, next_event
 
 
 def test_device_wall_clock_and_sunday_first() -> None:
@@ -77,3 +77,16 @@ def test_next_event_reads_source_switch_over_and_days() -> None:
     event = next_event([schedule], int(now.timestamp()), now)
     assert event is not None
     assert (event.target, event.source_code, event.switch_over) == (None, None, None)
+
+
+def test_clock_off_compares_the_wall_clocks_with_two_minutes_tolerance() -> None:
+    now = datetime(2026, 11, 11, 20, 0, tzinfo=timezone(timedelta(hours=5)))
+    encoded = int(datetime(2026, 11, 11, 20, 0, tzinfo=UTC).timestamp())
+    assert clock_off(encoded, now) is False
+    assert clock_off(encoded + 120, now) is False
+    assert clock_off(encoded - 120, now) is False
+    assert clock_off(encoded + 121, now) is True
+    assert clock_off(encoded - 121, now) is True
+    # Read as an instant, the same clock would be five hours off.
+    assert clock_off(int(now.timestamp()), now) is True
+    assert clock_off(0, now) is None

@@ -15,41 +15,56 @@
 <div id="stage"></div>
 <script>
 // Every reading below is made up. Heating states have not been captured from a real geyser. Event times are local
-// (capture.sh renders in Asia/Karachi) and relative to today, so "+1" stays right whenever this runs. Guest Bathroom
-// has no schedule, so its event is unavailable.
+// (capture.sh renders in Asia/Karachi) and relative to today, so "+1" stays right whenever this runs. The dashboard
+// scenes are the owner's four mockup scenarios (Dashboard card update 2); Ground Floor Bathroom has no schedule.
 function at(days, hours, minutes = 0) {
   const date = new Date();
   date.setDate(date.getDate() + days); date.setHours(hours, minutes, 0, 0);
   return date.toISOString();
 }
 const EVERY_DAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const WEEKDAYS = ['monday','tuesday','wednesday','thursday','friday'];
 const event = (target, more = {}) => ({target_temperature:target, heating_off:target === null, source:'gas', source_code:1,
   switch_over:false, repeat_days:EVERY_DAY, ...more});
+// The mockup draws one element bar; a geyser with two elements is the card's default.
+const ONE_ELEMENT = {element_count:1};
 const GEYSERS = {
-  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'65', next_event:at(1, 6)}, event:event(60)},
-  bathroom: {name:'Ground Floor Bathroom', values:{top:'44.6', bottom:'38.9', target:'60', burner_left:'on', burner_right:'on', boost:'on', next_event:at(0, 21, 30)},
-    event:event(55, {switch_over:true, repeat_days:['monday','tuesday','wednesday','thursday','friday']})},
-  upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'55', source:'hybrid', source_code:3, element_1:'on', next_event:at(1, 5, 30)},
-    event:event(50, {source:'unknown', source_code:3})},
-  guest: {name:'Guest Bathroom', values:{top:'unknown', top_ok:'off', bottom:'41.3', target:'0'}},
+  upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'0', next_event:at(0, 21, 30)},
+    event:event(55, {switch_over:true, repeat_days:WEEKDAYS}), config:ONE_ELEMENT},
+  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'65', burner_left:'on', burner_right:'on', boost:'on',
+    timer:'25', wifi:'fair', next_event:at(1, 6)}, event:event(60), config:ONE_ELEMENT},
+  bathroom: {name:'Ground Floor Bathroom', values:{top:'28.4', bottom:'24.9', target:'0', vacation:'on', wifi:'excellent'},
+    config:ONE_ELEMENT},
+  guest: {name:'Guest Bathroom', values:{top:'unknown', top_ok:'off', bottom:'41.3', target:'50', element_1:'on', wifi:'weak',
+    cloud:'off', next_event:at(1, 5, 30)}, event:event(50), config:ONE_ELEMENT},
+  laundry: {name:'Laundry', values:{top:'42.0', bottom:'40.6', target:'50', element_1:'on', element_2:'on', vacation:'on',
+    next_event:at(1, 7)}, event:event(null)},
   garage: {name:'Garage', values:{top:'36.4', bottom:'33.0', target:'0', next_event:at(1, 6, 30)}, event:event(45), unreachable:true},
-  laundry: {name:'Laundry', values:{top:'42.0', bottom:'40.6', target:'50', element_1:'on', element_2:'on', vacation:'on', next_event:at(1, 7)}, event:event(null)},
-  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on', next_event:at(0, 22)}, event:event(60, {repeat_days:null})},
+  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on', timer:'90', next_event:at(0, 22)},
+    event:event(60, {repeat_days:null})},
+  // The longest values the acceptance checks name, at once.
+  stress: {name:'Ground Floor Master Bathroom', values:{top:'88.8', bottom:'47.2', target:'72.5', source:'hybrid', source_code:3,
+    timer:'180', boost:'on', vacation:'on', wifi:'excellent', cloud:'off', clock:'on', next_event:at(7, 12, 30)}, event:event(72.5)},
 };
+const DASHBOARD = ['upstairs','kitchen','bathroom','guest'];
 const SCENES = {
-  'dashboard-light': {dark:false, columns:[340,340], cards:['kitchen','bathroom','upstairs','guest']},
-  'dashboard-dark': {dark:true, columns:[340,340], cards:['kitchen','bathroom','upstairs','guest']},
-  'idle': {dark:false, columns:[360], cards:['kitchen']},
-  'gas-heating': {dark:true, columns:[360], cards:['bathroom']},
-  'electric-heating': {dark:false, columns:[360], cards:['upstairs']},
+  'dashboard-light': {dark:false, columns:[345,345], cards:DASHBOARD},
+  'dashboard-dark': {dark:true, columns:[345,345], cards:DASHBOARD},
+  'idle': {dark:false, columns:[360], cards:['upstairs']},
+  'gas-heating': {dark:true, columns:[360], cards:['kitchen']},
+  'electric-heating': {dark:false, columns:[360], cards:['laundry']},
   'sensor-fault': {dark:true, columns:[360], cards:['guest']},
   'unreachable': {dark:false, columns:[360], cards:['garage']},
   'narrow': {dark:false, columns:[200,200,200], cards:['kitchen','laundry','roof']},
-  'details': {dark:false, columns:[360], cards:['bathroom'], details:true},
+  'details': {dark:false, columns:[360], cards:['upstairs'], details:true},
+  // One card per row, at the three acceptance widths.
+  'stress': {dark:false, widths:[388,336,296], cards:['stress','stress','stress']},
+  'stress-dark': {dark:true, widths:[388,336,296], cards:['stress','stress','stress']},
 };
 const DEFAULTS = {source:'gas', source_code:1, top_ok:'on', bottom_ok:'on', burner_left:'off', burner_right:'off',
-  element_1:'off', element_2:'off', boost:'off', vacation:'off', next_event:'unknown'};
-const isSensor = key => ['top','bottom','target','source','next_event'].includes(key);
+  element_1:'off', element_2:'off', boost:'off', vacation:'off', next_event:'unknown', timer:'0', wifi:'good', cloud:'on',
+  clock:'off'};
+const isSensor = key => ['top','bottom','target','source','next_event','timer','wifi'].includes(key);
 
 function states(id, values, override, attributes = GEYSERS[id].event) {
   const all = {...DEFAULTS, ...values};
@@ -70,12 +85,13 @@ async function main() {
   const scene = SCENES[new URLSearchParams(location.search).get('s')];
   document.body.className = scene.dark ? 'dark' : 'light';
   const stage = document.getElementById('stage');
-  stage.style.gridTemplateColumns = scene.columns.map(w => `${w}px`).join(' ');
+  stage.style.gridTemplateColumns = scene.widths ? 'max-content' : scene.columns.map(w => `${w}px`).join(' ');
   const live = Object.assign({}, ...Object.keys(GEYSERS).map(id => states(id, GEYSERS[id].values)));
   const hass = {states:live, locale:{language:'en'}, config:{unit_system:{temperature:'°C'}}, themes:{darkMode:scene.dark}, callWS:async () => registry};
-  const cards = scene.cards.map(id => {
+  const cards = scene.cards.map((id, i) => {
     const card = document.createElement('ezgeyser-card');
-    card.setConfig({device_id:`device-${id}`, name:GEYSERS[id].name});
+    if (scene.widths) card.style.width = `${scene.widths[i]}px`;
+    card.setConfig({device_id:`device-${id}`, name:GEYSERS[id].name, ...GEYSERS[id].config});
     stage.append(card);
     card.hass = hass;
     return [id, card];

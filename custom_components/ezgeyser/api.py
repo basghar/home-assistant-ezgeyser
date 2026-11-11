@@ -2,6 +2,10 @@
 
 Only the fields this integration uses are parsed, strictly: a response that does not look like the documented one is
 refused as a whole. The geyser's Wi-Fi settings are never requested (`/wifiData` is not on the guard's list).
+
+The connectivity and timer fields of `/quickStatus` (`rssi`, `mqtt`, `remaining`) are optional: a firmware that leaves
+one out still gives the temperatures, and only that entity is unknown. Sent with the wrong kind of value, they refuse
+the response like any other field. The required fields are what tells a geyser from a stranger.
 """
 
 import asyncio
@@ -55,6 +59,10 @@ class QuickStatus:
     boost: bool
     vacation: bool = False
     clock: int = 0
+    # None when the firmware leaves the field out.
+    rssi: int | None = None
+    cloud: bool | None = None
+    remaining: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +138,17 @@ def _flag(raw: dict[str, Any], key: str) -> bool:
     return value == 1
 
 
+def _optional_flag(raw: dict[str, Any], key: str) -> bool | None:
+    return None if raw.get(key) is None else _flag(raw, key)
+
+
+def _optional_integer(raw: dict[str, Any], key: str) -> int | None:
+    value = raw.get(key)
+    if value is not None and type(value) is not int:
+        raise NotAGeyser(f"unexpected field: {key}")
+    return value
+
+
 def _celsius(raw: dict[str, Any], key: str) -> float:
     value = raw.get(key)
     if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
@@ -162,6 +181,9 @@ def parse_quick_status(body: bytes) -> QuickStatus:
         boost=_flag(raw, "boostMode"),
         vacation=_flag(raw, "vacationMode"),
         clock=clock if isinstance(clock, int) and not isinstance(clock, bool) else 0,
+        rssi=_optional_integer(raw, "rssi"),
+        cloud=_optional_flag(raw, "mqtt"),
+        remaining=_optional_integer(raw, "remaining"),
     )
 
 

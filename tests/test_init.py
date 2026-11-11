@@ -1,9 +1,12 @@
 from datetime import UTC, datetime, timedelta
+import json
+from typing import Any
 
 from custom_components.ezgeyser.const import DOMAIN
 from custom_components.ezgeyser.schedule import NextEvent
-from custom_components.ezgeyser.sensor import NEXT_EVENT_ATTRIBUTES
+from custom_components.ezgeyser.sensor import NEXT_EVENT_ATTRIBUTES, wifi_level
 from freezegun.api import FrozenDateTimeFactory
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -11,6 +14,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 
 from .conftest import CLOUD_STATUS, DATA, HOST, MAC, QUICK_STATUS
@@ -29,9 +33,24 @@ ENTITY_IDS = {
     "sensor.kitchen_heating_source": "gas",
     "binary_sensor.kitchen_heating_boost_mode": STATE_OFF,
     "binary_sensor.kitchen_heating_vacation_mode": STATE_OFF,
+    "sensor.kitchen_timer_remaining": "0",
+    "sensor.kitchen_network_wi_fi_signal": "fair",
+    "binary_sensor.kitchen_network_cloud_connection": STATE_ON,
+    # The captured clock is from 2026-11-10, so it is off against the time the tests run at.
+    "binary_sensor.kitchen_device_clock": STATE_ON,
 }
-# Every unsmoothed reading; disabled by default, so they have no state until enabled.
-RAW_ENTITY_IDS = {"sensor.kitchen_temperature_top_raw", "sensor.kitchen_temperature_bottom_raw"}
+DIAGNOSTIC_ENTITY_IDS = {
+    "sensor.kitchen_network_wi_fi_signal",
+    "sensor.kitchen_network_wi_fi_rssi",
+    "binary_sensor.kitchen_network_cloud_connection",
+    "binary_sensor.kitchen_device_clock",
+}
+# Readings that change about every second; disabled by default, so they have no state until enabled.
+RAW_ENTITY_IDS = {
+    "sensor.kitchen_temperature_top_raw",
+    "sensor.kitchen_temperature_bottom_raw",
+    "sensor.kitchen_network_wi_fi_rssi",
+}
 
 
 async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> None:
@@ -40,7 +59,12 @@ async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     await hass.async_block_till_done()
 
 
-def _answer(aioclient_mock: AiohttpClientMocker, quick_status: bytes | None = QUICK_STATUS, data: bytes = DATA) -> None:
+def _answer(
+    aioclient_mock: AiohttpClientMocker,
+    quick_status: bytes | None = QUICK_STATUS,
+    data: bytes = DATA,
+    schedules: bytes | None = b"[]",
+) -> None:
     aioclient_mock.clear_requests()
     aioclient_mock.get(f"http://{HOST}/data", content=data)
     aioclient_mock.get(f"http://{HOST}/cloudStatus", content=CLOUD_STATUS)
@@ -48,9 +72,28 @@ def _answer(aioclient_mock: AiohttpClientMocker, quick_status: bytes | None = QU
         aioclient_mock.get(f"http://{HOST}/quickStatus", exc=TimeoutError())
     else:
         aioclient_mock.get(f"http://{HOST}/quickStatus", content=quick_status)
+    if schedules is None:
+        aioclient_mock.get(f"http://{HOST}/api/schedules", exc=TimeoutError())
+    else:
+        aioclient_mock.get(f"http://{HOST}/api/schedules", content=schedules)
 
 
-async def test_setup_creates_one_named_device_with_fifteen_prefixed_entities(
+def _status(**changes: Any) -> bytes:
+    return json.dumps({**json.loads(QUICK_STATUS), **changes}).encode()
+
+
+def _device_now(offset: timedelta = timedelta(), *, after: float = 1) -> int:
+    """Home Assistant's local wall time `after` seconds from now (at the next poll), encoded as the geyser sends it."""
+    return int((dt_util.now() + offset + timedelta(seconds=after)).replace(tzinfo=UTC).timestamp())
+
+
+async def _tick(hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float = 1) -> None:
+    freezer.tick(timedelta(seconds=seconds))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+
+async def test_setup_creates_one_named_device_with_twenty_prefixed_entities(
     hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
 ) -> None:
     await _setup(hass, entry)
@@ -66,6 +109,9 @@ async def test_setup_creates_one_named_device_with_fifteen_prefixed_entities(
     assert {entity.entity_id for entity in entities} == set(ENTITY_IDS) | RAW_ENTITY_IDS
     assert {entity.entity_id for entity in entities if entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION} == (
         RAW_ENTITY_IDS
+    )
+    assert {entity.entity_id for entity in entities if entity.entity_category is er.EntityCategory.DIAGNOSTIC} == (
+        DIAGNOSTIC_ENTITY_IDS
     )
     assert {entity_id: hass.states.get(entity_id).state for entity_id in ENTITY_IDS} == ENTITY_IDS
     assert hass.states.get("sensor.kitchen_temperature_top").attributes["friendly_name"] == "Kitchen Temperature top"
@@ -237,3 +283,101 @@ async def test_next_event_attributes_carry_the_schedule_settings(
     coordinator.async_update_listeners()
     attributes = hass.states.get(entity_id).attributes
     assert (attributes["target_temperature"], attributes["source"], attributes["repeat_days"]) == (140.0, None, None)
+
+
+@pytest.mark.parametrize(
+    ("rssi", "level"),
+    [(-30, "excellent"), (-50, "excellent"), (-51, "good"), (-60, "good"), (-61, "fair"), (-70, "fair"),
+     (-71, "weak"), (-90, "weak"), (None, None)],
+)  # fmt: skip
+def test_wifi_level_uses_the_android_bands(rssi: int | None, level: str | None) -> None:
+    assert wifi_level(rssi) == level
+
+
+async def test_wifi_cloud_and_timer_follow_the_status_and_are_unknown_when_left_out(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    await _setup(hass, entry)
+    signal = hass.states.get("sensor.kitchen_network_wi_fi_signal")
+    assert signal.attributes["options"] == ["excellent", "good", "fair", "weak"]
+    assert "rssi" not in signal.attributes
+    timer = hass.states.get("sensor.kitchen_timer_remaining")
+    assert ("unit_of_measurement" not in timer.attributes, "state_class" not in timer.attributes) == (True, True)
+
+    _answer(geyser, _status(rssi=-71, mqtt=0, remaining=25))
+    await _tick(hass, freezer)
+    assert hass.states.get("sensor.kitchen_network_wi_fi_signal").state == "weak"
+    assert hass.states.get("binary_sensor.kitchen_network_cloud_connection").state == STATE_OFF
+    assert hass.states.get("sensor.kitchen_timer_remaining").state == "25"
+
+    status = json.loads(QUICK_STATUS)
+    for field in ("rssi", "mqtt", "remaining"):
+        del status[field]
+    _answer(geyser, json.dumps(status).encode())
+    await _tick(hass, freezer)
+    assert hass.states.get("sensor.kitchen_temperature_top").state == "43.1"
+    for entity_id in (
+        "sensor.kitchen_network_wi_fi_signal",
+        "binary_sensor.kitchen_network_cloud_connection",
+        "sensor.kitchen_timer_remaining",
+    ):
+        assert hass.states.get(entity_id).state == STATE_UNKNOWN
+
+
+async def test_an_enabled_wifi_rssi_shows_dbm(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker
+) -> None:
+    entry.add_to_hass(hass)
+    er.async_get(hass).async_get_or_create(
+        "sensor", DOMAIN, f"{MAC}_network_wifi_rssi", config_entry=entry, suggested_object_id="kitchen_wifi_rssi"
+    )
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    rssi = hass.states.get("sensor.kitchen_wifi_rssi")
+    assert (rssi.state, rssi.attributes["unit_of_measurement"], rssi.attributes["device_class"]) == (
+        "-64", "dBm", "signal_strength",
+    )  # fmt: skip
+
+
+async def test_device_clock_is_a_problem_more_than_two_minutes_from_home_assistant(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    await _setup(hass, entry)
+    clock = "binary_sensor.kitchen_device_clock"
+
+    for offset, state in [
+        (timedelta(), STATE_OFF),
+        (timedelta(seconds=-110), STATE_OFF),
+        (timedelta(seconds=130), STATE_ON),
+        (timedelta(minutes=-3), STATE_ON),
+    ]:
+        _answer(geyser, _status(now=_device_now(offset)))
+        await _tick(hass, freezer)
+        assert hass.states.get(clock).state == state
+
+    _answer(geyser, _status(now=0))
+    await _tick(hass, freezer)
+    assert hass.states.get(clock).state == STATE_UNKNOWN
+
+
+async def test_a_failed_or_unreadable_schedules_read_keeps_the_last_schedules(
+    hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    start = (dt_util.now() + timedelta(hours=2)).strftime("%H:%M")
+    schedules = json.dumps([{"isEnabled": True, "repetitionIsEnabled": False, "start": start}]).encode()
+    _answer(geyser, _status(now=_device_now(after=0)), schedules=schedules)
+    await _setup(hass, entry)
+    event = "sensor.kitchen_next_scheduled_event"
+    expected = hass.states.get(event).state
+    assert expected != STATE_UNKNOWN
+
+    for failed in (None, b"<html>busy</html>", b'{"not": "a list"}'):
+        _answer(geyser, _status(now=_device_now(after=60)), schedules=failed)
+        await _tick(hass, freezer, 60)
+        assert [str(call[1]) for call in geyser.mock_calls][-1] == f"http://{HOST}/api/schedules"
+        assert hass.states.get(event).state == expected
+
+    _answer(geyser, _status(now=_device_now(after=60)), schedules=b"[]")
+    await _tick(hass, freezer, 60)
+    assert hass.states.get(event).state == STATE_UNKNOWN

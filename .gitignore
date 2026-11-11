@@ -11,3 +11,6 @@ __pycache__/
 /.claude/
 /skills-lock.json
 /temp/
+
+# Overflow-check screenshots from capture.sh; not shown in the README.
+/assets/screenshots/check/

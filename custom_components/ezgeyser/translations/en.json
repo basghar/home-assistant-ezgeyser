@@ -94,6 +94,21 @@
           }
         }
       },
+      "network_wifi_signal": {
+        "name": "Network Wi-Fi signal",
+        "state": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "weak": "Weak"
+        }
+      },
+      "network_wifi_rssi": {
+        "name": "Network Wi-Fi RSSI"
+      },
+      "timer_remaining": {
+        "name": "Timer remaining"
+      },
       "next_scheduled_event": {
         "name": "Next scheduled event",
         "state_attributes": {
@@ -195,6 +210,12 @@
           "on": "Active",
           "off": "Inactive"
         }
+      },
+      "network_cloud_connection": {
+        "name": "Network cloud connection"
+      },
+      "device_clock": {
+        "name": "Device clock"
       }
     }
   },

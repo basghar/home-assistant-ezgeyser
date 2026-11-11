@@ -1,4 +1,4 @@
-"""Temperature and heating-source sensors, from `/quickStatus`.
+"""Temperature, heating-source, Wi-Fi and timer sensors, from `/quickStatus`.
 
 The tank temperatures are smoothed (see `smoothing.py`); the raw readings are separate sensors, disabled by default.
 """
@@ -14,7 +14,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT, EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -34,6 +34,14 @@ NEXT_EVENT_ATTRIBUTES = ("target_temperature", "heating_off", "source", "source_
 # The schedule's weekday flags, Sunday first: the order the Android app assumes, not yet verified on a device.
 WEEKDAYS = ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
 SOURCE_OPTIONS = ["gas", "electric", "hybrid", "unknown"]
+WIFI_LEVELS = ["excellent", "good", "fair", "weak"]
+
+
+def wifi_level(rssi: int | None) -> str | None:
+    """The Android app's four levels: -50 dBm or more excellent, -51 to -60 good, -61 to -70 fair, -71 or less weak."""
+    if rssi is None:
+        return None
+    return "excellent" if rssi >= -50 else "good" if rssi >= -60 else "fair" if rssi >= -70 else "weak"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -80,6 +88,31 @@ SENSORS: tuple[EzGeyserSensorDescription, ...] = (
         options=SOURCE_OPTIONS,
         value_fn=lambda coordinator: SOURCE_CODES.get(coordinator.data.source, "unknown"),
         attributes_fn=lambda status: {"source_code": status.source},
+    ),
+    # A level changes rarely, so it keeps history small; the dBm reading is a separate sensor, disabled by default.
+    EzGeyserSensorDescription(
+        key="network_wifi_signal",
+        translation_key="network_wifi_signal",
+        device_class=SensorDeviceClass.ENUM,
+        options=WIFI_LEVELS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: wifi_level(coordinator.data.rssi),
+    ),
+    EzGeyserSensorDescription(
+        key="network_wifi_rssi",
+        translation_key="network_wifi_rssi",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda coordinator: coordinator.data.rssi,
+    ),
+    # The firmware's number as sent: its unit is unverified, so it has none, and no statistics.
+    EzGeyserSensorDescription(
+        key="timer_remaining",
+        translation_key="timer_remaining",
+        value_fn=lambda coordinator: coordinator.data.remaining,
     ),
 )
 
