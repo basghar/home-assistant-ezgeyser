@@ -105,14 +105,14 @@
         }
       },
       "heating_burner_1": {
-        "name": "Heating burner 1",
+        "name": "Burner left flame sensor",
         "state": {
           "on": "Flame",
           "off": "No flame"
         }
       },
       "heating_burner_2": {
-        "name": "Heating burner 2",
+        "name": "Burner right flame sensor",
         "state": {
           "on": "Flame",
           "off": "No flame"

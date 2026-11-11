@@ -85,8 +85,8 @@ For a geyser named **Kitchen**:
 | `sensor.kitchen_temperature_bottom` | Bottom tank sensor, °C. Unknown while the sensor reports a fault. |
 | `binary_sensor.kitchen_temperature_bottom_ok` | **OK** / **Fault**: whether the bottom sensor reading is valid. |
 | `sensor.kitchen_temperature_target` | Target temperature of the running timer or preset, °C. 0 most likely means no target. |
-| `binary_sensor.kitchen_heating_burner_1` | **Flame** / **No flame**: flame sensor 1, at one end of the burner. |
-| `binary_sensor.kitchen_heating_burner_2` | **Flame** / **No flame**: flame sensor 2, at the other end of the same burner. |
+| `binary_sensor.kitchen_burner_left_flame_sensor` | **Flame** / **No flame**: flame sensor 1, at one end of the burner. |
+| `binary_sensor.kitchen_burner_right_flame_sensor` | **Flame** / **No flame**: flame sensor 2, at the other end of the same burner. |
 | `binary_sensor.kitchen_heating_element_1` | **Heating** / **Off**: electric heating element 1. |
 | `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2. |
 | `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the selected heating source. |

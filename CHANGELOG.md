@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 (2026-11-11)
+
+- Rename the burner entities to identify the left and right flame sensors on one burner.
+
 ## 0.5.0 (2026-11-11)
 
 - Select the geyser by Home Assistant `device_id` using the standard device selector in the card editor.

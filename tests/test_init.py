@@ -18,8 +18,8 @@ ENTITY_IDS = {
     "sensor.kitchen_temperature_bottom": "40.7",
     "binary_sensor.kitchen_temperature_bottom_ok": STATE_ON,
     "sensor.kitchen_temperature_target": "0.0",
-    "binary_sensor.kitchen_heating_burner_1": STATE_OFF,
-    "binary_sensor.kitchen_heating_burner_2": STATE_OFF,
+    "binary_sensor.kitchen_burner_left_flame_sensor": STATE_OFF,
+    "binary_sensor.kitchen_burner_right_flame_sensor": STATE_OFF,
     "binary_sensor.kitchen_heating_element_1": STATE_OFF,
     "binary_sensor.kitchen_heating_element_2": STATE_OFF,
     "sensor.kitchen_heating_source": "gas",
@@ -96,7 +96,7 @@ async def test_polls_every_second_and_unknown_temperature_while_its_sensor_is_no
 
     assert hass.states.get("sensor.kitchen_temperature_top").state == STATE_UNKNOWN
     assert hass.states.get("binary_sensor.kitchen_temperature_top_ok").state == STATE_OFF
-    assert hass.states.get("binary_sensor.kitchen_heating_burner_2").state == STATE_ON
+    assert hass.states.get("binary_sensor.kitchen_burner_right_flame_sensor").state == STATE_ON
 
 
 async def test_heating_source_is_an_enum_and_an_unconfirmed_code_is_unknown_with_the_code_kept(
