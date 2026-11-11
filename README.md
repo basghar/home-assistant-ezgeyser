@@ -4,9 +4,11 @@ A Home Assistant custom integration that reads **ezGeyser** water heaters **dire
 finds geysers on its own, adds each one as a device with the name you give it, and shows its temperatures and heating
 status. It only reads: it never changes anything on the geyser, and it never talks to the vendor's cloud.
 
-> This is an independent project. It is not made, endorsed or supported by the makers of ezGeyser. It has been tested
-> against responses captured from one geyser (Hybrid v2, firmware 1.4.0), and every value it shows is what the geyser
-> reports. **None of the values is a safety signal.**
+> **Not affiliated with ezGeyser.** This is an independent project with no association with
+> [ezGeyser](https://ezgeyser.com/) or its makers, and it is not endorsed or supported by them. It exists because the
+> geyser serves a local web interface backed by a clear, JSON-based HTTP API, and this integration reads that same API.
+> It has been tested against responses captured from one geyser (Hybrid v2, firmware 1.4.0), and every value it shows
+> is what the geyser reports. **None of the values is a safety signal.**
 
 ## Install with HACS
 
