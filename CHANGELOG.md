@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.6 (2026-11-12)
+
+- Card: the electrical icon and its bars form one history button, selecting one or both elements according to
+  the card's **Electric elements** preference. Both flame and electrical history open the last six hours ending now.
+
 ## 0.6.5 (2026-11-12)
 
 - Card: the flame icon and both sensor bars form one button that opens Home Assistant's History page with both

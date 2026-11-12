@@ -127,7 +127,7 @@ test('the status chip: outlined while idle, tinted by what heats (gas when both)
   const rule=selector=>t.api.STYLE.match(new RegExp(`(?:^|\\})${selector.replace(/[.]/g,'\\.')}\\{([^}]*)\\}`))?.[1];
   // Idle: the outline, then the icons, a divider and Idle.
   let html=t.html();
-  assert.match(chip(html),/^<div class="heat-status"><div class="sources">.*data-entity="element_2"[^]*<span class="state-text"><span class="activity ">Idle<\/span><\/span><\/div>$/);
+  assert.match(chip(html),/^<div class="heat-status"><div class="sources">.*data-action="electric-history"[^]*<span class="state-text"><span class="activity ">Idle<\/span><\/span><\/div>$/);
   assert.match(rule('.heat-status'),/height:20px;.*border:1px solid var\(--line-strong\);border-radius:10px/);assert.doesNotMatch(rule('.heat-status'),/background/);
   assert.match(rule('.state-text'),/padding-left:6px;margin-left:6px;border-left:1px solid var\(--line-strong\)/);
   // Heating: a 16% tint of the source colour, a transparent border of the same width, a 50% divider, and the timer inside.
@@ -147,17 +147,17 @@ test('the status chip: outlined while idle, tinted by what heats (gas when both)
   // Unknown: the outline and the two dimmed icons only, with no tint even while a heat source reports on, and no divider
   // or text. A running timer stays, after the chip.
   html=t.update({burner_left:'unknown',burner_right:'off',element_1:'on',element_2:'off',timer:'25'});
-  assert.match(chip(html),/^<div class="heat-status"><div class="sources">[^]*<\/div><\/div><\/div><\/div>$/);
+  assert.match(chip(html),/^<div class="heat-status"><div class="sources">[^]*<\/div><\/div>$/);
   assert.doesNotMatch(chip(html),/state-text|activity|tint-|class="heat (gas|electric) on"|segment lit/);
   assert.match(chip(html),/aria-label="Burner status unknown"[^]*aria-label="Elements status unknown"/);
-  assert.match(html,/<\/div><\/div><\/div><\/div><button class="timer entity-button" data-entity="timer"[^]*<span>25 left<\/span><\/button><button class="mode /);
+  assert.match(html,/<\/div><\/div><button class="timer entity-button" data-entity="timer"[^]*<span>25 left<\/span><\/button><button class="mode /);
   // At the last footer step only the state text shortens: the chip may shrink, but its icons, divider and timer clock stay.
   assert.equal(rule('.truncate-state .heat-status'),'flex:0 1 auto');
   assert.match(rule('.truncate-state .state-text'),/^display:grid;grid-auto-flow:column;grid-template-columns:minmax\(0,max-content\)/);
   assert.equal(rule('.truncate-state .activity'),'min-width:0');
   // Every sensor button stays reachable in every state; an unreachable card has no chip.
   assert.match(chip(html),/data-action="flame-history"/);
-  for (const key of ['element_1','element_2']) assert.match(chip(html),new RegExp(`data-entity="${key}"`));
+  assert.match(chip(html),/data-action="electric-history"/);
   assert.doesNotMatch(t.update({top:'unavailable'}),/heat-status/);
 });
 test('the mode pill: the word, a divider, then flame and bolt, allowed or not, with the words in its labels',() => {
@@ -299,7 +299,7 @@ test('switching devices clears cached readings, and a registry failure is explic
 
 test('individual readings open their corresponding entity, including renamed entities',()=>{
   const t=setup({main:'bottom'});
-  for (const key of ['top','bottom','target','boost','vacation','next_event','source','element_1','element_2','timer','wifi','cloud','clock']) {
+  for (const key of ['top','bottom','target','boost','vacation','next_event','source','timer','wifi','cloud','clock']) {
     t.card._ids[key] = `${SENSORS.includes(key) ? 'sensor' : 'binary_sensor'}.renamed_${key}`;
     t.card._hass.states[t.card._ids[key]] = {state:'unknown',attributes:{}};
     t.card.card.click({target:{closest:selector=>selector==='[data-entity]' ? {dataset:{entity:key}} : null}});
@@ -329,25 +329,50 @@ test('the whole flame opens History with both registry-resolved sensors, includi
 test('flame history opens the remaining sensor and does nothing when both are missing',()=>{
   const t=setup();
   delete t.card._hass.states[t.card._ids.burner_right];
-  t.card._openFlameHistory();
+  t.card._openHeatHistory('gas');
   const url=new URL(t.navigation.entries[0][2],'http://homeassistant.local');
   assert.equal(url.searchParams.get('entity_id'),t.card._ids.burner_left);
   delete t.card._hass.states[t.card._ids.burner_left];
-  t.card._openFlameHistory();
+  t.card._openHeatHistory('gas');
   assert.equal(t.navigation.entries.length,1);
 });
 
-test('the flame and its two bars share one button; electric indicators have individual buttons',()=>{
+test('each heat icon and its bars share one history button, with labels matching the element preference',()=>{
   const t=setup();
-  assert.equal((t.html().match(/data-action="flame-history"/g)||[]).length,1);
-  assert.match(t.html(),/<button class="entity-button heat-control" data-action="flame-history"[^]*?<svg class="heat gas [^]*?class="glyph"[^]*?class="segment [^]*?class="segment [^]*?<\/svg><\/button>/);
-  assert.doesNotMatch(t.html(),/data-entity="burner_(left|right)"/);
-  for (const key of ['element_1','element_2']) {
-    assert.match(t.html(),new RegExp(`<button class="entity-button heat-button" data-entity="${key}"`));
+  for (const [action,kind] of [['flame','gas'],['electric','electric']]) {
+    assert.equal((t.html().match(new RegExp(`data-action="${action}-history"`,'g'))||[]).length,1);
+    assert.match(t.html(),new RegExp(`<button class="entity-button heat-control" data-action="${action}-history"[^]*?<svg class="heat ${kind} [^]*?class="glyph"[^]*?class="segment [^]*?class="segment [^]*?</svg></button>`));
   }
-  const single=setup({element_count:1});
-  assert.match(single.html(),/data-entity="element_1"/);
-  assert.doesNotMatch(single.html(),/data-entity="element_2"/);
+  assert.doesNotMatch(t.html(),/data-entity="(burner_(left|right)|element_[12])"/);
+  assert.match(t.html(),/aria-label="Open both electric elements history"/);
+  assert.match(setup({element_count:1}).html(),/aria-label="Open electric element history"/);
+});
+
+test('electric history selects one or both renamed elements according to the preference',()=>{
+  for (const count of [undefined,1,2]) {
+    const t=setup(count ? {element_count:count} : {});
+    for (const key of ['element_1','element_2']) {
+      t.card._ids[key]=`binary_sensor.renamed_${key}`;
+      t.card._hass.states[t.card._ids[key]]={state:'on',attributes:{}};
+    }
+    t.card.card.click({target:{closest:selector=>selector==='[data-action="electric-history"]' ? {} : null}});
+    const url=new URL(t.navigation.entries[0][2],'http://homeassistant.local');
+    assert.equal(url.searchParams.get('entity_id'),count===1 ? t.card._ids.element_1 : `${t.card._ids.element_1},${t.card._ids.element_2}`);
+    assert.equal(t.card.event,undefined);
+  }
+});
+
+test('both history buttons request exactly the last six hours ending at click time',()=>{
+  const t=setup();
+  for (const kind of ['gas','electric']) {
+    const before=Date.now();
+    t.card._openHeatHistory(kind);
+    const after=Date.now();
+    const url=new URL(t.navigation.entries.at(-1)[2],'http://homeassistant.local');
+    const start=Date.parse(url.searchParams.get('start_date')), end=Date.parse(url.searchParams.get('end_date'));
+    assert.ok(end>=before && end<=after);
+    assert.equal(end-start,6*60*60*1000);
+  }
 });
 
 

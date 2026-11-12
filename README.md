@@ -170,9 +170,10 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
 - **Loading entities**, **Registry unavailable** or **Check entities:** the card cannot find the selected geyser's
   entities.
-- **Selecting** the flame icon or either of its two sensor bars opens Home Assistant's History page with both the left and right flame
-  sensors selected. A reading, tank half, pill, footer item or half of the bolt opens that entity's details and
-  history. ⓘ opens the main temperature. The box-and-gear action beside it opens the geyser's
+- **Selecting** the flame icon or its bars opens Home Assistant's History page with both flame sensors selected.
+  The electrical icon and its bars open history for one or both elements, according to **Electric elements**.
+  Both show the last six hours ending at the time you click. A reading, tank half, pill or footer item opens that
+  entity's details and history. ⓘ opens the main temperature. The box-and-gear action beside it opens the geyser's
   local web page in a new browser tab; its tooltip shows the address. Both action drawings sit just inside the badge's
   height, scale their widths proportionally, and sit 10 px apart. The browser action is dimmed and disabled while
   unreachable or while its address is unavailable. Your browser must be on the geyser's network to reach that page.
