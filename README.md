@@ -80,19 +80,19 @@ For a geyser named **Kitchen**:
 
 | Entity ID | Shows |
 |---|---|
-| `sensor.kitchen_temperature_top` | Top tank sensor, °C, [smoothed](#smoothed-temperatures). Unknown while the sensor reports a fault. |
+| `sensor.kitchen_temperature_top` | Top sensor, °C, [smoothed](#smoothed-temperatures). Unknown while the sensor reports a fault. |
 | `binary_sensor.kitchen_temperature_top_ok` | **OK** / **Fault**: whether the top sensor reading is valid. |
-| `sensor.kitchen_temperature_bottom` | Bottom tank sensor, °C, [smoothed](#smoothed-temperatures). Unknown while the sensor reports a fault. |
+| `sensor.kitchen_temperature_bottom` | Bottom sensor, °C, [smoothed](#smoothed-temperatures). Unknown while the sensor reports a fault. |
 | `binary_sensor.kitchen_temperature_bottom_ok` | **OK** / **Fault**: whether the bottom sensor reading is valid. |
-| `sensor.kitchen_temperature_target` | Target temperature of the running timer or preset, °C. 0 most likely means no target. |
-| `binary_sensor.kitchen_burner_left_flame_sensor` | **Flame** / **No flame**: flame sensor 1, at one end of the burner. |
-| `binary_sensor.kitchen_burner_right_flame_sensor` | **Flame** / **No flame**: flame sensor 2, at the other end of the same burner. |
-| `binary_sensor.kitchen_heating_element_1` | **Heating** / **Off**: electric heating element 1. |
-| `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2. |
-| `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the selected heating source. |
+| `sensor.kitchen_temperature_target` | The target the geyser is heating to, °C: from a running timer, the current schedule entry, or 0. 0 means no heating. |
+| `binary_sensor.kitchen_burner_left_flame_sensor` | **Flame** / **No flame**: flame input 1 (`burner1Status`). |
+| `binary_sensor.kitchen_burner_right_flame_sensor` | **Flame** / **No flame**: flame input 2 (`burner2Status`). |
+| `binary_sensor.kitchen_heating_element_1` | **Heating** / **Off**: electric heating element 1, as commanded. |
+| `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2, as commanded. |
+| `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the source in use; switch-over can temporarily replace the one you chose. |
 | `binary_sensor.kitchen_heating_boost_mode` | **Active** / **Inactive**: boost mode. |
 | `binary_sensor.kitchen_heating_vacation_mode` | **Active** / **Inactive**: vacation mode. |
-| `sensor.kitchen_timer_remaining` | Time left on the running timer, as the geyser sends it: the unit is unverified. 0 when no timer runs. |
+| `sensor.kitchen_timer_remaining` | Whole minutes left on the running timer (at least 1 while any time is left), shown without a unit. 0 when no timer runs. |
 | `sensor.kitchen_next_scheduled_event` | When the next enabled schedule starts: see [Next scheduled event](#next-scheduled-event). |
 | `sensor.kitchen_network_wi_fi_signal` | **Excellent** (−50 dBm or stronger), **Good** (to −60), **Fair** (to −70) or **Weak**. |
 | `binary_sensor.kitchen_network_cloud_connection` | **Connected** / **Disconnected**: the geyser's link to the ezGeyser cloud, which the official app uses. |
@@ -103,14 +103,19 @@ For a geyser named **Kitchen**:
 
 The labels are for display. In automations and templates, binary sensors are `on` (the first label) or `off`, the
 heating source is `gas`, `electric`, `hybrid` or `unknown`, and the Wi-Fi signal is `excellent`, `good`, `fair` or
-`weak`. Only the Gas code is confirmed so far; any other code shows as Unknown, and its raw value is in the
-`source_code` attribute.
+`weak`. The geyser codes Gas as 1, Electric as 2 and Hybrid as 3, but this version names only code 1: any other code
+shows as Unknown, and its raw value is in the `source_code` attribute.
 
 The `temperature_`, `heating_`, `timer_`, `network_` and `device_` parts group the entities by kind. If you rename the
 device later (**Settings > Devices**), Home Assistant offers to rename its entity IDs to match.
 
-So far only idle values have been captured, so what each flag shows while the geyser is heating has not been checked.
-Never use a burner flag as proof that a flame is, or is not, burning.
+**Top** and **bottom** are the geyser's own names for its two sensors; which probe sits where in the tank is not
+established. The geyser heats on the **bottom** sensor: it starts below the target, stops at the target, and after a
+stop starts again only once bottom is 5 °C below it. The top sensor can only stop heating early, at target + 5 °C. If
+the bottom sensor reports a fault, the geyser does not heat.
+
+The element flags show what the geyser switched on, not measured current, and a flame flag only means its sensor
+input crossed a threshold. Never use a burner flag as proof that a flame is, or is not, burning.
 
 ## Screenshots
 
@@ -253,9 +258,9 @@ a reading the rounding starts over. The level sensor still uses the original sig
 Schedules are read once a minute and edited only in the official ezGeyser app; after a failed or unreadable read, the
 last schedules read are kept. The device clock is taken as local wall time, so Home Assistant must use the geyser's
 time zone. A clock more than two minutes off (**Device clock** shows **Problem**), or an empty schedule or one that
-cannot be interpreted, makes the event unavailable. Weekday flags are assumed to start on Sunday, as in the Android
-app; that order is unverified. The event shows the scheduled wall time, as Android does; small differences between
-the device clock and Home Assistant do not shift the displayed time.
+cannot be interpreted, makes the event unavailable. Weekday flags start on Sunday, as in the Android app. The event
+shows the scheduled wall time, as Android does; small differences between the device clock and Home Assistant do not
+shift the displayed time.
 
 Selecting the event on the card opens a window with what that schedule sets; **History** there opens the sensor. The
 same values are the sensor's attributes, each `null` when the schedule leaves it out or there is no event:
@@ -265,7 +270,7 @@ same values are the sensor's attributes, each `null` when the schedule leaves it
 | `target_temperature` | In your temperature unit; `null` when the event turns heating off. |
 | `heating_off` | `true` when the scheduled target is 0. |
 | `source`, `source_code` | As for the heating source sensor. |
-| `switch_over` | `true` when the geyser may switch over from gas to electric. |
+| `switch_over` | `true` when the geyser may switch to the other source while gas or mains is unavailable. |
 | `repeat_days` | `sunday` to `saturday`; `null` for a one-off schedule. |
 
 ## Safety
