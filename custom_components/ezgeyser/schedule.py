@@ -118,5 +118,6 @@ def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime
         return None
     # The first entry wins a tie, as listed by the firmware.
     first, schedule = min(candidates, key=lambda candidate: candidate[0])
-    # Preserve the device-clock offset, so the instant represents when its clock reaches the event.
-    return _event(now.astimezone(UTC).replace(microsecond=0) + (first - device_now), schedule)
+    # The device clock selects the occurrence; display its scheduled wall time, as Android does.
+    # Applying clock skew here can turn 04:30 into 04:29:59, displayed as 04:29.
+    return _event(first.replace(tzinfo=now.tzinfo).astimezone(UTC), schedule)

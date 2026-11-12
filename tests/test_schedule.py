@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta, timezone
 
 from custom_components.ezgeyser.schedule import NextEvent, clock_off, next_event
+import pytest
 
 
 def test_device_wall_clock_and_sunday_first() -> None:
@@ -90,3 +91,32 @@ def test_clock_off_compares_the_wall_clocks_with_two_minutes_tolerance() -> None
     # Read as an instant, the same clock would be five hours off.
     assert clock_off(int(now.timestamp()), now) is True
     assert clock_off(0, now) is None
+
+
+@pytest.mark.parametrize("skew_seconds", [-120, -60, -1, 0, 1, 30, 60, 120])
+@pytest.mark.parametrize("start", ["04:30", "00:00"])
+def test_next_event_preserves_scheduled_time_with_clock_skew(skew_seconds: int, start: str) -> None:
+    zone = timezone(timedelta(hours=5))
+    now = datetime(2026, 11, 11, 20, tzinfo=zone)
+    encoded = int(now.replace(tzinfo=UTC).timestamp()) + skew_seconds
+    schedule = {"isEnabled": True, "repetitionIsEnabled": False, "start": start}
+
+    event = next_event([schedule], encoded, now)
+
+    assert event is not None
+    hour, minute = map(int, start.split(":"))
+    expected = datetime(2026, 11, 12, hour, minute, tzinfo=zone)
+    assert event.at == expected.astimezone(UTC)
+    assert event.at.astimezone(zone).strftime("%H:%M:%S") == f"{start}:00"
+
+
+def test_device_clock_still_selects_the_next_occurrence() -> None:
+    zone = timezone(timedelta(hours=5))
+    now = datetime(2026, 11, 12, 4, 29, 50, tzinfo=zone)
+    encoded = int(now.replace(tzinfo=UTC).timestamp()) + 20
+    schedule = {"isEnabled": True, "repetitionIsEnabled": False, "start": "04:30"}
+
+    event = next_event([schedule], encoded, now)
+
+    assert event is not None
+    assert event.at == datetime(2026, 11, 13, 4, 30, tzinfo=zone).astimezone(UTC)

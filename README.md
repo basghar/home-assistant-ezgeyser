@@ -12,7 +12,7 @@ status. It only reads: it never changes anything on the geyser, and it never tal
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/dashboard-dark.png">
-  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle with all OK, heating on gas with a timer and Boost, idle in vacation mode with no schedule, and a top sensor fault with weak Wi-Fi and the cloud offline. Each shows its target and next scheduled event on the right" src="assets/screenshots/dashboard-light.png" width="744">
+  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle with all OK, heating on gas with a timer and Boost, idle in vacation mode with no schedule, and a top sensor fault with weak Wi-Fi and the cloud offline. Each shows its target, or Target not set, and its next scheduled event on the right, and Heating or Idle in the footer" src="assets/screenshots/dashboard-light.png" width="744">
 </picture>
 
 <sub>The bundled dashboard card, with simulated readings. More in [Screenshots](#screenshots).</sub>
@@ -118,7 +118,7 @@ The real card with **simulated readings**; the geysers and values are made up.
 
 | | |
 |---|---|
-| ![Upstairs idle on gas: 39.5 °C top, 35.1 °C bottom, no target, next event 9:30 PM to 55°, Wi-Fi Good](assets/screenshots/idle.png) | ![Kitchen heating on gas with a timer and Boost, dark theme](assets/screenshots/gas-heating.png) |
+| ![Upstairs idle on gas: 39.5 °C top, 35.1 °C bottom, target not set, next event 9:30 PM to 55°, Wi-Fi Good](assets/screenshots/idle.png) | ![Kitchen heating on gas with a timer and Boost, dark theme](assets/screenshots/gas-heating.png) |
 | **Idle** | **Heating on gas**, dark theme |
 | ![Laundry heating on both electric elements, in vacation mode](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault, weak Wi-Fi and the cloud offline, dark theme](assets/screenshots/sensor-fault.png) |
 | **Heating on the elements** | **Three issues**, dark theme |
@@ -155,27 +155,32 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor reports a fault.
 - **Badge:** **All OK**, the one problem by name (**Top sensor**, **Bottom sensor**, **Weak Wi-Fi**, **Cloud
   offline** or **Clock off**), or how many there are, such as **3 issues**; its tooltip lists them.
-- **Right column:** the target, then the next scheduled event: its time, **+1** when it is tomorrow (**+2** and so
-  on), and the temperature it sets, or **Off**. Select it for its [details](#next-scheduled-event). **Boost** and
-  **Vacation** show under them while on.
-- **Footer:** the flame is the burner, and its two bars are the two sides of the same burner. The bolt is the electric
-  elements, one bar each. A filled icon means the flag is on, an outline means off, and dimmed means unknown. The text
-  says **Heating**, **Idle** with the selected source (`Source N?` for an unconfirmed source code), or **Heating
-  status unknown**, then the time left while a timer runs. On the right are the Wi-Fi level, the cloud link and, only
-  while it is off, the device clock; amber marks a problem.
+- **Right column:** the target beside a thermometer, or **Target not set** (target 0) or **Target unknown**; then the
+  next scheduled event: its time, **+1** when it is tomorrow (**+2** and so on), and the temperature it sets, or
+  **Off**. Select it for its [details](#next-scheduled-event). **Boost** and **Vacation** appear as pills while on.
+- **Footer:** the status chip starts with the flame for the burner, whose two bars are its two sides, and the bolt for
+  the electric elements, one bar each. A filled icon means the flag is on, an outline means off, and
+  dimmed means unknown. After a divider it says **Idle** or **Heating**, then the time left while a timer runs. The chip
+  is outlined while idle and tinted in the gas or electric colour while heating (gas when both heat). While the heating
+  status is unknown it holds only the dimmed icons, and a running timer follows it. The **Mode** pill shows flame and
+  bolt icons for gas only, electric only, or both with an arrow for hybrid, and reads **Unknown** for any other source;
+  select it for source details. On the right are the Wi-Fi icon, whose lit arcs show the level (unlit arcs stay visible,
+  muted), the cloud link and, only while it is off, the device clock; amber marks a problem.
 - **Unreachable:** the last values this browser saw, muted, with the time Home Assistant last updated them. That is
   not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
 - **Loading entities**, **Registry unavailable** or **Check entities:** the card cannot find the selected geyser's
   entities.
-- **Selecting** a reading, a tank half, a mode, a footer item, or the left or right half of the flame or bolt opens
+- **Selecting** a reading, a tank half, a pill, a footer item, or the left or right half of the flame or bolt opens
   that entity's details and history. ⓘ opens the main temperature. The box-and-gear action beside it opens the geyser's
   local web page in a new browser tab; its tooltip shows the address. Both action drawings sit just inside the badge's
   height, scale their widths proportionally, and sit 10 px apart. The browser action is dimmed and disabled while
   unreachable or while its address is unavailable. Your browser must be on the geyser's network to reach that page.
 
 Cards are all the same height, follow Home Assistant's light or dark mode, fit their column, and work in Sections and
-Masonry views. Text never shrinks or wraps: when a card is too narrow, the modes show as icons, then the Wi-Fi word,
-then the timer's text are left out, and the state text is shortened. A missing or disabled entity just hides its item.
+Masonry views. Text never shrinks or wraps: when a card is too narrow, the mode pill loses its word and divider, then
+the timer's text is left out, then the state text is shortened. Cards narrower than about 260 px put the Wi-Fi and
+cloud icons on a second footer line, and narrower than about 185 px the mode pill too. Select the Wi-Fi icon for the
+level and its history. A missing or disabled entity just hides its item.
 
 ### YAML configuration
 
@@ -247,7 +252,8 @@ Schedules are read once a minute and edited only in the official ezGeyser app; a
 last schedules read are kept. The device clock is taken as local wall time, so Home Assistant must use the geyser's
 time zone. A clock more than two minutes off (**Device clock** shows **Problem**), or an empty schedule or one that
 cannot be interpreted, makes the event unavailable. Weekday flags are assumed to start on Sunday, as in the Android
-app; that order is unverified.
+app; that order is unverified. The event shows the scheduled wall time, as Android does; small differences between
+the device clock and Home Assistant do not shift the displayed time.
 
 Selecting the event on the card opens a window with what that schedule sets; **History** there opens the sensor. The
 same values are the sensor's attributes, each `null` when the schedule leaves it out or there is no event:

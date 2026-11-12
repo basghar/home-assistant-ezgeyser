@@ -42,11 +42,22 @@ const GEYSERS = {
   garage: {name:'Garage', values:{top:'36.4', bottom:'33.0', target:'0', next_event:at(1, 6, 30)}, event:event(45), unreachable:true},
   roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on', timer:'90', next_event:at(0, 22)},
     event:event(60, {repeat_days:null})},
+  // Status chip check scenes: both sources heating (tinted gas), and an unknown heating status with a running timer.
+  utility: {name:'Utility Room', values:{top:'47.9', bottom:'44.2', target:'55', source:'hybrid', burner_left:'on',
+    element_1:'on', timer:'40', next_event:at(1, 6)}, event:event(55)},
+  studio: {name:'Studio', values:{top:'44.6', bottom:'40.3', target:'50', burner_left:'unknown', element_1:'on', timer:'40',
+    source:'unknown', source_code:3, next_event:at(1, 6)}, event:event(50)},
+  // The widest footer: heating with a timer, an unknown mode and every end icon.
+  porch: {name:'Porch', values:{top:'49.0', bottom:'45.5', target:'55', source:'unknown', source_code:3, burner_left:'on',
+    timer:'180', wifi:'excellent', cloud:'off', clock:'on', next_event:at(1, 6)}, event:event(55)},
   // The longest values the acceptance checks name, at once.
   stress: {name:'Ground Floor Master Bathroom', values:{top:'88.8', bottom:'47.2', target:'72.5', source:'hybrid', source_code:3,
     timer:'180', boost:'on', vacation:'on', wifi:'excellent', cloud:'off', clock:'on', next_event:at(7, 12, 30)}, event:event(72.5)},
 };
 const DASHBOARD = ['upstairs','kitchen','bathroom','guest'];
+// Either side of the widths where the footer takes a second and a third line; one row per card.
+const FOOTER_WIDTHS = [156,184,185,200,258,259,296];
+const FOOTER_CARDS = ['kitchen','studio','porch','garage'];
 const SCENES = {
   'dashboard-light': {dark:false, columns:[345,345], cards:DASHBOARD},
   'dashboard-dark': {dark:true, columns:[345,345], cards:DASHBOARD},
@@ -57,6 +68,11 @@ const SCENES = {
   'unreachable': {dark:false, columns:[360], cards:['garage']},
   'narrow': {dark:false, columns:[200,200,200], cards:['kitchen','laundry','roof']},
   'details': {dark:false, columns:[360], cards:['upstairs'], details:true},
+  // Every status chip state (idle, gas, electric, both, unknown), checked by eye; not in the README.
+  'chip-states': {dark:false, columns:[345,345], cards:['upstairs','kitchen','laundry','utility','studio']},
+  'chip-states-dark': {dark:true, columns:[345,345], cards:['upstairs','kitchen','laundry','utility','studio']},
+  // Every footer layout, checked by eye and by checkLayout; not in the README.
+  'footer-check': {dark:false, columns:FOOTER_WIDTHS, cards:FOOTER_CARDS.flatMap(id => FOOTER_WIDTHS.map(() => id))},
   // One card per row, at the three acceptance widths.
   'stress': {dark:false, widths:[388,336,296], cards:['stress','stress','stress']},
   'stress-dark': {dark:true, widths:[388,336,296], cards:['stress','stress','stress']},
@@ -80,6 +96,29 @@ const registry = Object.keys(GEYSERS).flatMap(id => Object.entries(FIELDS).map((
   entity_id:`${isSensor(key) ? 'sensor' : 'binary_sensor'}.${id}_${suffix}`, platform:'ezgeyser',
   device_id:`device-${id}`, unique_id:`70041d1234${id.length}_${suffix}`,
 })));
+
+// What every scene must hold: no footer item outside the footer or over another, Unknown in full, and cards of the same
+// width at the same height. capture.sh fails on anything listed.
+function checkLayout(cards) {
+  const problems = [], heights = {};
+  for (const [id, card] of cards) {
+    const root = card.shadowRoot, footer = root.querySelector('ha-card .footer').getBoundingClientRect();
+    const items = [...root.querySelectorAll('ha-card .heat-status, ha-card .start > .timer, ha-card .mode, ha-card .status > *')]
+      .map(item => [item.classList[0], item.getBoundingClientRect()]);
+    const width = Math.round(card.getBoundingClientRect().width), at = `${id} at ${width}px`;
+    items.forEach(([name, a], i) => {
+      if (a.left < footer.left - .01 || a.right > footer.right + .01) problems.push(`${at}: ${name} leaves the footer`);
+      for (const [other, b] of items.slice(i + 1)) {
+        if (a.left < b.right - .01 && b.left < a.right - .01 && a.top < b.bottom - .01 && b.top < a.bottom - .01) problems.push(`${at}: ${name} overlaps ${other}`);
+      }
+    });
+    const unknown = root.querySelector('ha-card .mode .quiet');
+    if (unknown && unknown.scrollWidth > unknown.clientWidth + .5) problems.push(`${at}: Unknown is clipped`);
+    (heights[width] ||= new Set()).add(Math.round(card.getBoundingClientRect().height));
+  }
+  for (const [width, set] of Object.entries(heights)) if (set.size > 1) problems.push(`${width}px cards differ in height: ${[...set]}`);
+  return problems;
+}
 
 async function main() {
   const scene = SCENES[new URLSearchParams(location.search).get('s')];
@@ -110,7 +149,8 @@ async function main() {
     stage.style.minWidth = '632px'; stage.style.minHeight = '452px';
     cards[0][1]._openDetails();
   }
-  document.title = `${stage.offsetWidth}x${stage.offsetHeight}`;
+  const problems = checkLayout(cards);
+  document.title = problems.length ? `FAIL ${problems.join('; ')}` : `${stage.offsetWidth}x${stage.offsetHeight}`;
 }
 main();
 </script>

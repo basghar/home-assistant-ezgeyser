@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.4 (2026-11-12)
+
+- Keep the next scheduled event at its configured wall time. Small device clock differences could previously make
+  a 04:30 schedule display as 04:29.
+
+- Card: the target sits beside a thermometer icon. A target of 0 shows **Target not set**; a missing target still
+  shows **Target unknown**.
+- Card: the footer text is just **Heating** or **Idle**, and empty while the heating status is unknown. The selected
+  heat source moves to a footer mode pill with flame and bolt icons; an unrecognised source reads **Unknown**.
+- Card: the heat icons, **Heating** or **Idle** and the timer share one footer status chip. It is outlined while idle,
+  tinted in the gas or electric colour while heating (gas when both heat), and outlined with only the dimmed icons while
+  the heating status is unknown.
+- Card: the Wi-Fi status is icon-only at every width; its tooltip, its label and the details it opens give the level.
+  Unlit arcs stay visible, muted.
+- Card: in a narrow card the mode pill loses its word first, then the timer's text is left out, then the state text is
+  shortened. Cards narrower than about 260 px move the Wi-Fi and cloud icons to a second footer line, and narrower than
+  about 185 px the mode pill too, so the footer no longer overlaps and **Unknown** always shows in full.
+- Update the README screenshots and their descriptions.
+
 ## 0.6.3 (2026-11-12)
 
 - Round the optional **Network Wi-Fi RSSI** sensor to 5 dBm steps, with a 1 dBm buffer around rounding boundaries
