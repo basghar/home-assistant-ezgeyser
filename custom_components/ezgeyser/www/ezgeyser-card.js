@@ -133,9 +133,10 @@ function heatIcon(kind, first, second, count, known = true) {
   return `<svg class="heat ${kind} ${on ? 'on' : ''}" viewBox="0 0 24 24" role="img" aria-label="${text}"><title>${text}</title><g transform="translate(3.6 .5) scale(.7)"><path class="glyph" d="${path}"/></g>${count === 1 ? bar(3.5,20.5,on) : bar(3.5,10.8,first)+bar(13.2,20.5,second)}</svg>`;
 }
 function heatControls(kind, first, second, count, known) {
-  const keys = kind === 'gas' ? ['burner_left','burner_right'] : ['element_1','element_2'];
-  const labels = kind === 'gas' ? ['Left flame sensor','Right flame sensor'] : ['Electric element 1','Electric element 2'];
-  return `<div class="heat-control">${heatIcon(kind,first,second,count,known)}<div class="heat-buttons">${keys.slice(0,count).map((key,i) => `<button class="entity-button heat-button" data-entity="${key}" aria-label="Open ${labels[i]} details" title="Open ${labels[i]} details"></button>`).join('')}</div></div>`;
+  if (kind === 'gas') return `<button class="entity-button heat-control" data-action="flame-history" aria-label="Open left and right flame sensor history" title="Open left and right flame sensor history">${heatIcon(kind,first,second,count,known)}</button>`;
+  const keys = ['element_1','element_2'];
+  const labels = ['Electric element 1 details','Electric element 2 details'];
+  return `<div class="heat-control">${heatIcon(kind,first,second,count,known)}<div class="heat-buttons">${keys.slice(0,count).map((key,i) => `<button class="entity-button heat-button" data-entity="${key}" aria-label="Open ${labels[i]}" title="Open ${labels[i]}"></button>`).join('')}</div></div>`;
 }
 // The configured heating source, which the device's `source` code selects: which heat sources the mode allows, not what
 // heats right now. Allowed sources are neutral, never the gas and electric colours of the live heat icons. Only the gas
@@ -279,6 +280,7 @@ class EzGeyserCard extends HTMLElement {
       // Native links keep browser keyboard, context-menu and long-press behavior, separate from HA details.
       if (e.target.closest('[data-action="device-page"]')) return;
       if (e.target.closest('[data-action="schedule"]')) return this._openDetails();
+      if (e.target.closest('[data-action="flame-history"]')) return this._openFlameHistory();
       const button = e.target.closest('[data-entity]');
       if (button) this._moreInfo(button.dataset.entity);
     });
@@ -460,6 +462,13 @@ class EzGeyserCard extends HTMLElement {
       status:end('.footer') - end('.start'), mode:end('.mode') - end('.start > :nth-last-child(2)'),
     });
     card.className = classes(fitClasses(this._fit));
+  }
+  _openFlameHistory() {
+    // Use registry-resolved IDs so renamed entities still open the same burner's history.
+    const ids = ['burner_left','burner_right'].map(side => this._ids?.[side]).filter(entity => entity && this._hass?.states[entity]);
+    if (!ids.length) return;
+    window.history.pushState(null,'',`/history?entity_id=${encodeURIComponent(ids.join(','))}`);
+    window.dispatchEvent(new CustomEvent('location-changed',{detail:{replace:false}}));
   }
   _moreInfo(key = this._config?.main || 'top') {
     const id = this._ids?.[key];

@@ -14,7 +14,9 @@ function setup(config = {}) {
     toggleAttribute() {}
     dispatchEvent(event) { this.event = event; }
   }
-  const context = vm.createContext({HTMLElement:Element,window:{},customElements:{get(){},define(){}},CustomEvent:class {constructor(type,options){this.type=type;Object.assign(this,options);}},Intl,Date});
+  const navigation = {entries:[],events:[]};
+  const window = {history:{pushState(...args){navigation.entries.push(args)}},dispatchEvent(event){navigation.events.push(event)}};
+  const context = vm.createContext({HTMLElement:Element,window,encodeURIComponent,customElements:{get(){},define(){}},CustomEvent:class {constructor(type,options){this.type=type;Object.assign(this,options);}},Intl,Date});
   vm.runInContext(source + '\nthis.api = {EzGeyserCard,deviceEntities,FIELDS,tankColors,heatIcon,scheduleView,fitLayout,fitClasses,wifiIcon,devicePage,STYLE};', context);
   const card = new context.api.EzGeyserCard();
   card._registry = Object.entries(context.api.FIELDS).map(([key,suffix]) => ({
@@ -26,7 +28,7 @@ function setup(config = {}) {
   const states = Object.fromEntries(Object.entries(card._ids).map(([key,id]) => [id,{state:values[key],attributes:{unit_of_measurement:'°C',...(key==='source' ? {source_code:1}: {})},last_updated:'2026-11-11T00:00:00Z'}]));
   let hass = {states,devices:{'kitchen-device':{configuration_url:'http://192.168.1.50/'}},locale:{language:'en',time_zone:'server',time_format:'12'},config:{time_zone:'UTC',unit_system:{temperature:'°C'}},themes:{darkMode:false}};
   card.hass = hass;
-  return {card,api:context.api,
+  return {card,api:context.api,navigation,
     update(changes,attributes){for(const [key,state] of Object.entries(changes)) states[card._ids[key]] = {...states[card._ids[key]],state,...(attributes ? {attributes} : {})};card.hass={...hass};return card.card.innerHTML;},
     html:()=>card.card.innerHTML};
 }
@@ -154,7 +156,8 @@ test('the status chip: outlined while idle, tinted by what heats (gas when both)
   assert.match(rule('.truncate-state .state-text'),/^display:grid;grid-auto-flow:column;grid-template-columns:minmax\(0,max-content\)/);
   assert.equal(rule('.truncate-state .activity'),'min-width:0');
   // Every sensor button stays reachable in every state; an unreachable card has no chip.
-  for (const key of ['burner_left','burner_right','element_1','element_2']) assert.match(chip(html),new RegExp(`data-entity="${key}"`));
+  assert.match(chip(html),/data-action="flame-history"/);
+  for (const key of ['element_1','element_2']) assert.match(chip(html),new RegExp(`data-entity="${key}"`));
   assert.doesNotMatch(t.update({top:'unavailable'}),/heat-status/);
 });
 test('the mode pill: the word, a divider, then flame and bolt, allowed or not, with the words in its labels',() => {
@@ -296,7 +299,7 @@ test('switching devices clears cached readings, and a registry failure is explic
 
 test('individual readings open their corresponding entity, including renamed entities',()=>{
   const t=setup({main:'bottom'});
-  for (const key of ['top','bottom','target','boost','vacation','next_event','source','burner_left','burner_right','element_1','element_2','timer','wifi','cloud','clock']) {
+  for (const key of ['top','bottom','target','boost','vacation','next_event','source','element_1','element_2','timer','wifi','cloud','clock']) {
     t.card._ids[key] = `${SENSORS.includes(key) ? 'sensor' : 'binary_sensor'}.renamed_${key}`;
     t.card._hass.states[t.card._ids[key]] = {state:'unknown',attributes:{}};
     t.card.card.click({target:{closest:selector=>selector==='[data-entity]' ? {dataset:{entity:key}} : null}});
@@ -307,9 +310,39 @@ test('individual readings open their corresponding entity, including renamed ent
   assert.equal(t.card.event,undefined);
 });
 
-test('gas and electric indicators expose independent sensor buttons',()=>{
+test('the whole flame opens History with both registry-resolved sensors, including renamed entities',()=>{
   const t=setup();
-  for (const key of ['burner_left','burner_right','element_1','element_2']) {
+  for (const side of ['burner_left','burner_right']) {
+    t.card._ids[side]=`binary_sensor.renamed_${side}`;
+    t.card._hass.states[t.card._ids[side]]={state:'unavailable',attributes:{}};
+  }
+  t.card.card.click({target:{closest:selector=>selector==='[data-action="flame-history"]' ? {} : null}});
+  const url=new URL(t.navigation.entries.at(-1)[2],'http://homeassistant.local');
+  assert.equal(url.pathname,'/history');
+  assert.equal(url.searchParams.get('entity_id'),`${t.card._ids.burner_left},${t.card._ids.burner_right}`);
+  assert.equal(t.navigation.events.at(-1).type,'location-changed');
+  assert.equal(t.card.event,undefined);
+  assert.equal(t.navigation.entries.length,1);
+  assert.match(t.html(),/aria-label="Open left and right flame sensor history"/);
+});
+
+test('flame history opens the remaining sensor and does nothing when both are missing',()=>{
+  const t=setup();
+  delete t.card._hass.states[t.card._ids.burner_right];
+  t.card._openFlameHistory();
+  const url=new URL(t.navigation.entries[0][2],'http://homeassistant.local');
+  assert.equal(url.searchParams.get('entity_id'),t.card._ids.burner_left);
+  delete t.card._hass.states[t.card._ids.burner_left];
+  t.card._openFlameHistory();
+  assert.equal(t.navigation.entries.length,1);
+});
+
+test('the flame and its two bars share one button; electric indicators have individual buttons',()=>{
+  const t=setup();
+  assert.equal((t.html().match(/data-action="flame-history"/g)||[]).length,1);
+  assert.match(t.html(),/<button class="entity-button heat-control" data-action="flame-history"[^]*?<svg class="heat gas [^]*?class="glyph"[^]*?class="segment [^]*?class="segment [^]*?<\/svg><\/button>/);
+  assert.doesNotMatch(t.html(),/data-entity="burner_(left|right)"/);
+  for (const key of ['element_1','element_2']) {
     assert.match(t.html(),new RegExp(`<button class="entity-button heat-button" data-entity="${key}"`));
   }
   const single=setup({element_count:1});

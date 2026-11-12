@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.5 (2026-11-12)
+
+- Card: the flame icon and both sensor bars form one button that opens Home Assistant's History page with both
+  flame sensors selected. Renamed entities are supported.
+
 ## 0.6.4 (2026-11-12)
 
 - Keep the next scheduled event at its configured wall time. Small device clock differences could previously make
