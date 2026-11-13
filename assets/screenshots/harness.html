@@ -31,8 +31,8 @@ const ONE_ELEMENT = {element_count:1};
 const GEYSERS = {
   upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'0', next_event:at(0, 21, 30)},
     event:event(55, {switch_over:true, repeat_days:WEEKDAYS}), config:ONE_ELEMENT},
-  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'65', burner_left:'on', burner_right:'on', boost:'on',
-    timer:'25', wifi:'fair', next_event:at(1, 6)}, event:event(60), config:ONE_ELEMENT},
+  kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'55', burner_left:'on', burner_right:'on', boost:'on',
+    timer:'25', wifi:'fair', next_event:at(1, 6)}, event:event(55), config:ONE_ELEMENT},
   bathroom: {name:'Ground Floor Bathroom', values:{top:'28.4', bottom:'24.9', target:'0', vacation:'on', wifi:'excellent'},
     config:ONE_ELEMENT},
   guest: {name:'Guest Bathroom', values:{top:'unknown', top_ok:'off', bottom:'41.3', target:'50', element_1:'on', wifi:'weak',
@@ -40,8 +40,8 @@ const GEYSERS = {
   laundry: {name:'Laundry', values:{top:'42.0', bottom:'40.6', target:'50', element_1:'on', element_2:'on', vacation:'on',
     next_event:at(1, 7)}, event:event(null)},
   garage: {name:'Garage', values:{top:'36.4', bottom:'33.0', target:'0', next_event:at(1, 6, 30)}, event:event(45), unreachable:true},
-  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'60', burner_left:'on', timer:'90', next_event:at(0, 22)},
-    event:event(60, {repeat_days:null})},
+  roof: {name:'Rooftop', values:{top:'58.1', bottom:'57.4', target:'55', burner_left:'on', timer:'90', next_event:at(0, 22)},
+    event:event(55, {repeat_days:null})},
   // Status chip check scenes: both sources heating (tinted gas), and an unknown heating status with a running timer.
   utility: {name:'Utility Room', values:{top:'47.9', bottom:'44.2', target:'55', source:'hybrid', burner_left:'on',
     element_1:'on', timer:'40', next_event:at(1, 6)}, event:event(55)},

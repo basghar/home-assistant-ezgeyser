@@ -155,9 +155,11 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
 
 ### Reading the card
 
-- **Tank bar:** the top half is the top sensor and the bottom half the bottom sensor. The warmer half is red and the cooler half blue, with extra lightness contrast so that even a 1 °C difference shows.
-  Equal readings and a single valid reading use a blue-to-red temperature scale. The colours are a
-  guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor reports a fault.
+- **Tank bar:** the top half is the top sensor and the bottom half the bottom sensor, each coloured by its own reading:
+  blue for cold water (15 °C and below), lavender around skin temperature, orchid for a comfortable shower, then magenta
+  and rose to full red at 60 °C. When the two readings differ, their colours are pushed one degree further apart, so even
+  1 °C shows. The colours are a guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor
+  reports a fault.
 - **Badge:** **All OK**, the one problem by name (**Top sensor**, **Bottom sensor**, **Weak Wi-Fi**, **Cloud
   offline** or **Clock off**), or how many there are, such as **3 issues**; its tooltip lists them.
 - **Right column:** the target beside a thermometer, or **Target not set** (target 0) or **Target unknown**; then the

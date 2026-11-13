@@ -225,29 +225,33 @@ function detailsHtml(view, showSource) {
     <dl>${row('Target',target)}${showSource ? row('Heat source',view.source) + row('Switch-over',view.switchOver) : ''}${row('Repeats',view.repeats)}</dl>
     <footer><button class="text-button" data-entity="next_event">History</button><button class="filled-button" data-close>Close</button></footer></div>`;
 }
-// Equal or single readings use the absolute temperature hue; otherwise red and blue
-// distinguish the warmer and cooler halves, with additional lightness contrast.
+// The tank bar's colours, one place to retune them (the Android app's TankColors is the same scale). One sRGB colour per
+// whole degree from SCALE_MIN to SCALE_MAX, index = °C − SCALE_MIN, made once by linear OKLCH interpolation between
+// anchors (°C: L C H) 15: .46 .16 264 · 22: .58 .15 262 · 28: .69 .13 270 · 35: .76 .12 300 · 40: .70 .16 325 ·
+// 45: .64 .19 345 · 50: .60 .20 5 · 55: .55 .20 20 · 60: .50 .19 27. The table is the truth; never recompute it here.
+// Blue is cold tap water, lavender skin temperature, orchid a comfortable shower, rose scald risk; 60 is the hottest the
+// geyser reaches (targets stop at 55).
+const SCALE_MIN = 15, SCALE_MAX = 60;
+const TEMP_COLORS = ['#2850B0','#2C55B5','#305BB9','#3460BE','#3966C3','#3D6CC8','#4271CD','#4777D2',
+  '#507CD6','#5981DB','#6286DF','#6B8BE3','#7491E8','#7C96EC','#8697EE','#9098F0','#9A9AF1','#A39BF2','#AC9CF2','#B49EF2',
+  '#BD9FF2','#C098EE','#C490E9','#C888E3','#CB80DC','#CF78D5','#D171CC','#D369C4','#D562BA','#D65AB1','#D852A6','#D94D9C',
+  '#D94791','#DA4287','#DA3D7B','#DA3870','#D73466','#D5305C','#D22C52','#CF2848','#CC243D','#C82237','#C42031','#BF1E2A',
+  '#BB1B24','#B7191C'];
+const roundHalfUp = t => Math.floor(t + .5);
+const tempColor = c => TEMP_COLORS[Math.min(SCALE_MAX,Math.max(SCALE_MIN,c)) - SCALE_MIN];
+// [top, bottom] colours in °C; null for a sensor that is not reporting (its half is hatched). Neighbouring degrees look
+// alike, so unequal readings move 1 °C apart, then shift together back inside the scale. The card prints the real values.
 function tankColors(top, bottom) {
-  const anchors = [[20,220],[30,165],[40,40],[50,25],[60,12],[75,0]];
-  function hue(t) {
-    if (t <= 20) return 220;
-    for (let i = 1; i < anchors.length; i++) {
-      if (t <= anchors[i][0]) {
-        const [a,h] = anchors[i-1], [b,j] = anchors[i];
-        return h + (j-h)*(t-a)/(b-a);
-      }
-    }
-    return 0;
-  }
-  const difference = top !== null && bottom !== null ? top-bottom : 0;
-  // At a 1°C delta the halves differ by 24 lightness points; never exaggerate numbers.
-  const contrast = Math.abs(difference) < .05 ? 0 : Math.min(18, 12 + Math.abs(difference)/3);
-  return [top,bottom].map((t,i) => {
-    if (t === null) return 'var(--off)';
-    const relative = (i === 0 ? 1 : -1)*Math.sign(difference);
-    const colorHue = contrast ? (relative > 0 ? 5 : 220) : hue(t);
-    return `hsl(${colorHue.toFixed(2)} 76% ${55 - relative*contrast}%)`;
-  });
+  if (top === null || bottom === null) return [top,bottom].map(t => t === null ? null : tempColor(roundHalfUp(t)));
+  const rt = roundHalfUp(top), rb = roundHalfUp(bottom);
+  if (rt === rb) return [tempColor(rt),tempColor(rb)];
+  const s = rt > rb ? 1 : -1;
+  let et = rt + s, eb = rb - s;
+  const hi = Math.max(et,eb);
+  if (hi > SCALE_MAX) { et -= hi - SCALE_MAX; eb -= hi - SCALE_MAX; }
+  const lo = Math.min(et,eb);
+  if (lo < SCALE_MIN) { et += SCALE_MIN - lo; eb += SCALE_MIN - lo; }
+  return [tempColor(et),tempColor(eb)];
 }
 // The number's and the second line's line heights are trimmed to the glyphs, so the text block centres on its digits.
 // The middle row is always as tall as a full right column (target, event and a mode line), with or without modes, so
@@ -258,7 +262,7 @@ const STYLE = `
 :host([dark]){--surface:#202024;--text:#E5E1E6;--secondary:#C6C5CF;--tertiary:#908F99;--line:#34343A;--off:#77767F;--ok:#9AD6A9;--ok-bg:#1E3826;--warn:#FFB95E;--warn-bg:#4A2B00;--primary:#B4C5FF;--on-primary:#13285E;--primary-bg:#2B3A66;--dialog:#2A2A2F;--gas:#FF8F57;--electric:#F2B33D;--wifi-off:#66656E;--mode-off:#4A4950;--line-strong:#57565E}
 *{box-sizing:border-box}ha-card{display:block;background:var(--ha-card-background,var(--surface));color:var(--text);border:1px solid var(--ha-card-border-color,var(--line));border-radius:var(--ha-card-border-radius,16px);box-shadow:var(--ha-card-box-shadow,none);overflow:hidden}ha-card,.sample{font-family:var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif)}
 .card{padding:12px 14px 10px;outline:none}.entity-button{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:inherit;cursor:pointer}.entity-button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}.card:focus-visible{outline:3px solid var(--primary);outline-offset:-3px;border-radius:16px}.header{display:flex;align-items:center;gap:10px;min-width:0;min-height:24px}.name{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;max-width:60%;font-size:12px;font-weight:500;color:var(--ok);background:var(--ok-bg)}.badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge.warning{color:var(--warn);background:var(--warn-bg)}.icon{width:16px;height:16px;flex:none}.header .icon{width:18px;height:18px;stroke-width:2}.details-button{position:relative;flex:none;width:var(--header-action-size,22.8px);height:var(--header-action-size,22.8px);border:0;background:none;color:var(--secondary);padding:0;display:grid;place-items:center;border-radius:50%;cursor:pointer}.details-button::before{content:"";position:absolute;z-index:0;width:48px;height:48px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}.header .name,.header .badge{position:relative;z-index:1}.details-button .icon{position:absolute;z-index:1;left:50%;top:50%;width:120%;height:120%;transform:translate(-50%,-50%)}.details-button:focus-visible{outline:2px solid var(--primary);outline-offset:3px}.details-button[aria-disabled="true"]{opacity:.38;cursor:default}.details-button[aria-disabled="true"]::before{pointer-events:none}
-.temperatures{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:8px;align-items:center;min-height:var(--row-h);margin:12px 0 8px}.left{display:flex;align-items:center;align-self:stretch;gap:12px;min-width:0}.tank{width:11px;flex:none;align-self:stretch;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--line)}.half{height:50%;flex:1}.half+.half{border-top:1px solid var(--surface)}.half.fault{background:repeating-linear-gradient(135deg,var(--off) 0 3px,var(--surface) 3px 5px)!important}.readings{min-width:0}.reading{display:flex;align-items:baseline;gap:4px;white-space:nowrap;line-height:.75}.number{font-size:36px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}.unit{font-size:15px;color:var(--secondary)}.secondary{display:block;font-size:14px;line-height:.95;white-space:nowrap;color:var(--secondary);margin-top:11px}.fault-text{color:var(--warn)}
+.temperatures{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:8px;align-items:center;min-height:var(--row-h);margin:12px 0 8px}.left{display:flex;align-items:center;align-self:stretch;gap:12px;min-width:0}.tank{width:11px;flex:none;align-self:stretch;display:flex;flex-direction:column;gap:2px}.tank .half{flex:1 1 0;min-height:0;border-radius:5.5px 5.5px 2px 2px;box-shadow:inset 0 0 0 1px rgba(28,27,34,.08)}.tank .half+.half{border-radius:2px 2px 5.5px 5.5px}.half.fault{background:repeating-linear-gradient(135deg,#C6C3D1 0 4px,#E4E2EA 4px 8px)}.readings{min-width:0}.reading{display:flex;align-items:baseline;gap:4px;white-space:nowrap;line-height:.75}.number{font-size:36px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}.unit{font-size:15px;color:var(--secondary)}.secondary{display:block;font-size:14px;line-height:.95;white-space:nowrap;color:var(--secondary);margin-top:11px}.fault-text{color:var(--warn)}
 .right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px;min-width:0;font-size:12px;color:var(--secondary);text-align:right}.line{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;max-width:100%;min-height:var(--line-h);white-space:nowrap;overflow:hidden}.line .icon{width:14px;height:14px}.value{font-weight:500;color:var(--text)}.quiet{color:var(--tertiary)}.day-badge{display:inline-grid;place-items:center;flex:none;height:18px;min-width:18px;padding:0 4px;border-radius:9px;background:var(--primary);color:var(--on-primary);font-size:10px;font-weight:600;line-height:1}.modes{display:flex;gap:6px;flex:none}.chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:var(--chip-h);min-width:var(--chip-h);border-radius:11px;padding:0 9px 0 7px;font-size:11px;font-weight:500;white-space:nowrap;background:var(--primary-bg);color:var(--primary)}.chip .icon{width:13px;height:13px}.chips-icons .chip{width:var(--chip-h);padding:0}.chips-icons .chip span{display:none}
 .footer{border-top:1px solid var(--line);padding-top:6px;display:flex;align-items:center;gap:8px;min-height:31px;font-size:12px;color:var(--secondary);white-space:nowrap}.start{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.sources{display:flex;gap:6px;flex:none}.heat-control{position:relative;width:24px;height:24px;flex:none}.heat{width:24px;height:24px;color:var(--off);overflow:visible}.glyph{fill:none;stroke:currentColor;stroke-width:2.3;stroke-linejoin:round}.on .glyph{fill:currentColor}.gas.on{color:var(--gas)}.electric.on{color:var(--electric)}.segment{fill:none;stroke:var(--off);opacity:.55;stroke-width:2.6;stroke-linecap:round}.gas .lit{stroke:var(--gas);opacity:1}.electric .lit{stroke:var(--electric);opacity:1}.activity{flex:none;overflow:hidden;text-overflow:ellipsis}.activity.heating{color:var(--text)}.timer,.wifi,.cloud,.clock{display:inline-flex;align-items:center;gap:4px;flex:none}.wifi .icon{width:18px;height:18px}.mode{display:inline-flex;align-items:center;flex:none;height:20px;padding:0 7px;border:1px solid var(--line-strong);border-radius:10px;font-size:11px;line-height:1;color:var(--secondary)}.mode-word{align-self:stretch;display:inline-flex;align-items:center;padding-right:6px;margin-right:6px;border-right:1px solid var(--line-strong)}.mode-icons{display:inline-flex;align-items:center;gap:3px}.mode-icon{width:12px;height:12px;flex:none;fill:none;stroke:var(--mode-off);stroke-width:2.3;stroke-linejoin:round}.mode-icon.allowed{stroke:var(--text)}.mode-arrow{width:9px;height:9px;flex:none;fill:none;stroke:var(--tertiary);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.heat-status{display:inline-flex;align-items:center;flex:none;height:20px;padding:0 7px;border:1px solid var(--line-strong);border-radius:10px;font-size:11px;line-height:1}.heat-status .sources{gap:3px}.heat-status .heat-control,.heat-status .heat{width:16px;height:16px}.heat-status .timer .icon{width:13px;height:13px}.state-text{align-self:stretch;display:inline-flex;align-items:center;gap:8px;padding-left:6px;margin-left:6px;border-left:1px solid var(--line-strong)}.tint-gas{background:color-mix(in srgb,var(--gas) 16%,transparent);border-color:transparent}.tint-gas .state-text{border-left-color:color-mix(in srgb,var(--gas) 50%,transparent)}.tint-electric{background:color-mix(in srgb,var(--electric) 16%,transparent);border-color:transparent}.tint-electric .state-text{border-left-color:color-mix(in srgb,var(--electric) 50%,transparent)}@media(min-resolution:2dppx){.mode,.mode-word,.heat-status,.state-text{border-width:.5px}}.status{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}.warn{color:var(--warn)}.stale .number,.stale .unit,.stale .secondary{color:var(--tertiary)}.stale .tank{opacity:.45}.stale .right{color:var(--tertiary)}
 .no-mode-word .mode-word,.no-timer-text .timer span{display:none}.truncate-state .heat-status{flex:0 1 auto}.truncate-state .state-text{display:grid;grid-auto-flow:column;grid-template-columns:minmax(0,max-content)}.truncate-state .activity{min-width:0}
@@ -516,6 +520,7 @@ class EzGeyserCard extends HTMLElement {
     };
     const top = fault('top') ? null : celsius(shown.top), bottom = fault('bottom') ? null : celsius(shown.bottom);
     const colors = tankColors(top,bottom);
+    const half = (key, color) => `<button class="half entity-button${color ? '' : ' fault'}" data-entity="${key}" aria-label="Open ${key} temperature details"${color ? ` style="background:${color}"` : ''}></button>`;
     const link = connectivity(shown);
     const issues = problems(shown,link);
     let badge = badgeText(issues);
@@ -556,7 +561,8 @@ class EzGeyserCard extends HTMLElement {
     // last_updated is an HA state timestamp, not the last successful poll time.
     const lastTime = this._last ? Object.values(this._last).map(s => s?.last_updated).filter(Boolean).sort().at(-1) : null;
     const updated = lastTime ? new Date(lastTime).toLocaleString(hass.locale?.language || 'en') : null;
-    const tankLabel = `Top ${display('top')} ${shown.top?.attributes.unit_of_measurement || '°C'}${fault('top') ? ', sensor fault' : ''}; Bottom ${display('bottom')} ${shown.bottom?.attributes.unit_of_measurement || '°C'}${fault('bottom') ? ', sensor fault' : ''}. Colours emphasize the relative temperature difference.`;
+    const sensorLabel = (key, word) => fault(key) ? `${word} sensor not reporting` : `${word} ${display(key)} ${shown[key]?.attributes.unit_of_measurement || '°C'}`;
+    const tankLabel = `${sensorLabel('top','Top')}, ${sensorLabel('bottom','bottom')}`;
     const active = this.shadowRoot.activeElement;
     const focused = active && this._card.contains?.(active) ? active.dataset : null;
     // The chips' words can be hidden (`chips-icons`), so each says what it is in its label and tooltip.
@@ -565,7 +571,7 @@ class EzGeyserCard extends HTMLElement {
     const badgeLabel = issues.length && badge === badgeText(issues) ? issues.length > 1 ? `${badge}: ${issues.join(', ')}` : issues[0] : badge;
     const links = linkItems(link);
     const body = `<div class="header"><h2 class="name" title="${escape(name)}">${escape(name)}</h2><div class="badge ${warning ? 'warning' : ''}" role="img" aria-label="${escape(badgeLabel)}" title="${escape(badgeLabel)}">${icon(unreachable ? 'offline' : warning ? 'warning' : 'check')}<span>${escape(badge)}</span></div><button class="details-button entity-button" data-entity="${main}" aria-label="Open main temperature details">${icon('info')}</button><a class="details-button device-page-button" data-action="device-page" aria-label="Open device page in browser" title="${escape(page ? `Open ${page.host}` : 'Device address unavailable')}"${this._devicePage ? ` href="${escape(page.url)}" target="_blank" rel="noopener noreferrer"` : ' role="link" aria-disabled="true" tabindex="-1"'}>${devicePageIcon()}</a></div>
-      <div class="temperatures"><div class="left"><div class="tank" role="group" aria-label="${escape(tankLabel)}" title="${escape(tankLabel)}"><button class="half entity-button ${top === null ? 'fault' : ''}" data-entity="top" aria-label="Open top temperature details" style="background:${colors[0]}"></button><button class="half entity-button ${bottom === null ? 'fault' : ''}" data-entity="bottom" aria-label="Open bottom temperature details" style="background:${colors[1]}"></button></div>
+      <div class="temperatures"><div class="left"><div class="tank" role="group" aria-label="${escape(tankLabel)}" title="${escape(tankLabel)}">${half('top',colors[0])}${half('bottom',colors[1])}</div>
       <div class="readings"><button class="reading entity-button" data-entity="${main}" aria-label="Open ${main} temperature details"><span class="number ${number(main) === null ? 'fault-text' : ''}">${escape(display(main))}</span><span class="unit">${escape(unit)}</span></button><button data-entity="${other}" aria-label="Open ${other} temperature details" class="secondary entity-button ${number(other) === null ? 'fault-text' : ''}">${other === 'top' ? 'Top' : 'Bottom'} ${escape(display(other))}${escape(shown[other]?.attributes.unit_of_measurement || '°C')}</button></div></div>
       <div class="right">${unreachable ? '<span class="line">Last known values</span>' : `<button class="line entity-button" data-entity="target" aria-label="${escape(targetLabel)}. Open target temperature details" title="${escape(targetLabel)}">${targetLine}</button>${scheduleLine(this._schedule,Boolean(states.next_event),showSource)}${modes ? `<div class="modes">${modes}</div>` : ''}`}</div></div>
       <div class="footer">${unreachable ? `<div class="start"><span class="activity">${updated ? `Last available ${escape(updated)}` : 'No previous values available'}</span></div>` : `<div class="start">${heatStatus}${modePill(shown.source)}</div>${links ? `<div class="status" role="group" aria-label="${escape(linkLabel(link))}">${links}</div>` : ''}`}</div>`;

@@ -258,11 +258,21 @@ test('Fahrenheit zero target, bottom main, single element and HTML escaping',() 
   assert.match(html,/<span class="quiet">not set<\/span>/);assert.match(html,/Element on/);assert.match(html,/M3.5 21H20.5/);assert.match(html,/&lt;img/);assert.doesNotMatch(html,/<img/);
   assert.match(html,/number ">47.2/);
 });
-test('tank has visible contrast at one degree, equal colours at equality, null for faults',() => {
-  const {api}=setup();const [a,b]=api.tankColors(43,42);
-  assert.match(a,/^hsl\(5\.00 76% 42\.66/);assert.match(b,/^hsl\(220\.00 76% 67\.33/);
-  const reversed=api.tankColors(42,43);assert.equal(reversed[0],b);assert.equal(reversed[1],a);
-  const equal=api.tankColors(43,43);assert.equal(equal[0],equal[1]);assert.equal(api.tankColors(null,43)[0],'var(--off)');
+test('tank colours follow the spec table, pushed 1 degree apart and kept inside 15-60',() => {
+  const {api}=setup();
+  const cases=[[16.2,14.6,'#3460BE','#2850B0'],[26.4,25.7,'#6B8BE3','#6B8BE3'],[35.6,33.9,'#C490E9','#AC9CF2'],[41.2,29.5,'#D369C4','#8697EE'],
+    [46.3,45.4,'#D94791','#D65AB1'],[52.4,49.0,'#D22C52','#DA4287'],[55.1,54.3,'#C82237','#D22C52'],[59.6,57.8,'#B7191C','#C82237'],
+    [62.0,61.0,'#B7191C','#C42031'],[45.0,45.0,'#D852A6','#D852A6'],[null,41.3,null,'#D171CC'],[46.3,47.3,'#D852A6','#DA4287'],
+    [52.4,null,'#D5305C',null],[null,null,null,null],[-4,-4,'#2850B0','#2850B0'],[90,90,'#B7191C','#B7191C']];
+  for (const [top,bottom,a,b] of cases) assert.deepEqual([...api.tankColors(top,bottom)],[a,b],`${top} / ${bottom}`);
+});
+test('tank bar labels each sensor and hatches a missing one',() => {
+  const t=setup();
+  assert.match(t.update({}),/class="tank" role="group" aria-label="Top 51\.8 °C, bottom 47\.2 °C"/);
+  const html=t.update({top_ok:'off'});
+  assert.match(html,/aria-label="Top sensor not reporting, bottom 47\.2 °C"/);
+  assert.match(html,/<button class="half entity-button fault" data-entity="top" aria-label="Open top temperature details"><\/button>/);
+  assert.match(t.api.STYLE,/\.half\.fault\{background:repeating-linear-gradient\(135deg,#C6C3D1 0 4px,#E4E2EA 4px 8px\)\}/);
 });
 test('configuration rejects invalid values and more-info uses main entity',() => {
   assert.throws(()=>setup({element_count:3}));assert.throws(()=>setup({main:'middle'}));assert.throws(()=>setup({entities:{top:'<script>'}}));
