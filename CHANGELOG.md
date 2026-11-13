@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.7 (2026-11-13)
+
+- Card: require both flame sensors for gas **Heating**; either electric element still counts as heating. A lone
+  flame input with both elements off shows **Flame detected** in an outlined chip. Individual sensor bars remain visible,
+  and an active element with only one flame input uses the electric tint.
+
 ## 0.6.6 (2026-11-12)
 
 - Card: the electrical icon and its bars form one history button, selecting one or both elements according to

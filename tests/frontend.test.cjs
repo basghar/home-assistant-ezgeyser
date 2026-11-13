@@ -37,6 +37,21 @@ test('idle, target, gas and electric bars, boost',() => {
   const html=t.update({burner_left:'on',element_2:'on',boost:'on'});
   assert.match(html,/Burner left side on/);assert.match(html,/Element 1 off, element 2 on/);assert.match(html,/class="activity heating">Heating</);assert.match(html,/>Boost</);
 });
+test('all flame and element combinations distinguish heating, lone flame and idle without hiding sensor flags',() => {
+  const t=setup();
+  for (let bits=0;bits<16;bits++) {
+    const [left,right,el1,el2]=[1,2,4,8].map(bit=>Boolean(bits & bit));
+    const html=t.update(Object.fromEntries(['burner_left','burner_right','element_1','element_2'].map((key,i)=>[key,bits & (1<<i) ? 'on' : 'off'])));
+    const heating=(left && right) || el1 || el2;
+    const text=heating ? 'Heating' : left || right ? 'Flame detected' : 'Idle';
+    assert.ok(html.includes(`<span class="activity ${heating ? 'heating' : ''}">${text}</span>`),`flags ${bits}: ${text}`);
+    const tint=left && right ? 'gas' : el1 || el2 ? 'electric' : '';
+    assert.ok(html.includes(`<div class="heat-status${tint ? ` tint-${tint}` : ''}">`),`flags ${bits}: tint ${tint}`);
+    const burner=left && right ? 'Burner both sides on' : left ? 'Burner left side on' : right ? 'Burner right side on' : 'Burner off';
+    assert.ok(html.includes(`aria-label="${burner}"`),`flags ${bits}: raw flame indicators`);
+    assert.ok(html.includes(`aria-label="Element 1 ${el1 ? 'on' : 'off'}, element 2 ${el2 ? 'on' : 'off'}"`),`flags ${bits}: raw element indicators`);
+  }
+});
 const EVENT = {target_temperature:60,heating_off:false,source:'gas',source_code:1,switch_over:false,repeat_days:['sunday','monday','tuesday','wednesday','thursday','friday','saturday']};
 function tomorrowAtSix() { const now=new Date(); return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,6)).toISOString(); }
 test('right column: the target, the next event with a +1 badge, then the modes moved from the footer',() => {
@@ -108,10 +123,11 @@ test('offline uses session cache and a fresh page has no invented readings',() =
   const fresh=setup();fresh.card._last=null;fresh.card._signature=null;
   assert.doesNotMatch(fresh.update({top:'unavailable'}),/Last available /);
 });
-test('the activity is the live state only: Idle, Heating, or nothing while unknown',() => {
+test('the activity is the live state only: Idle, Flame detected, Heating, or nothing while unknown',() => {
   const t=setup();let html=t.html();
   assert.match(html,/<span class="activity ">Idle<\/span>/);assert.doesNotMatch(html,/· Gas|Idle ·|class="activity entity-button/);
-  assert.match(t.update({burner_right:'on'}),/<span class="activity heating">Heating<\/span>/);
+  assert.match(t.update({burner_right:'on'}),/<span class="activity ">Flame detected<\/span>/);
+  assert.match(t.update({burner_left:'on'}),/<span class="activity heating">Heating<\/span>/);
   html=t.update({burner_right:'off',burner_left:'unknown'});
   assert.doesNotMatch(html,/class="activity|Heating status unknown|Idle/);assert.match(html,/Burner status unknown/);
   // The mode pill still shows the configured source.
@@ -131,8 +147,9 @@ test('the status chip: outlined while idle, tinted by what heats (gas when both)
   assert.match(rule('.heat-status'),/height:20px;.*border:1px solid var\(--line-strong\);border-radius:10px/);assert.doesNotMatch(rule('.heat-status'),/background/);
   assert.match(rule('.state-text'),/padding-left:6px;margin-left:6px;border-left:1px solid var\(--line-strong\)/);
   // Heating: a 16% tint of the source colour, a transparent border of the same width, a 50% divider, and the timer inside.
-  for (const [changes,tint] of [[{burner_left:'on'},'gas'],[{burner_right:'on'},'gas'],[{element_1:'on'},'electric'],[{element_2:'on'},'electric'],
-    [{burner_left:'on',element_1:'on'},'gas'],[{burner_right:'on',element_2:'on'},'gas']]) {
+  for (const [changes,tint] of [[{burner_left:'on',burner_right:'on'},'gas'],[{element_1:'on'},'electric'],[{element_2:'on'},'electric'],
+    [{burner_left:'on',element_1:'on'},'electric'],[{burner_right:'on',element_2:'on'},'electric'],
+    [{burner_left:'on',burner_right:'on',element_1:'on'},'gas']]) {
     const reset={burner_left:'off',burner_right:'off',element_1:'off',element_2:'off'};
     html=t.update({...reset,...changes,timer:'25'});
     assert.match(chip(html),new RegExp(`^<div class="heat-status tint-${tint}">[^]*<span class="state-text"><span class="activity heating">Heating</span><button class="timer [^]*<span>25 left</span></button></span></div>$`),JSON.stringify(changes));
@@ -412,7 +429,7 @@ test('the Wi-Fi icon always draws the dot and three arcs, lighting 3, 2, 1 or no
 });
 test('the timer shows its raw number while running, and Heating is in the primary text colour',()=>{
   const t=setup();assert.doesNotMatch(t.html(),/data-entity="timer"/);
-  const html=t.update({timer:'25',burner_left:'on'});
+  const html=t.update({timer:'25',burner_left:'on',burner_right:'on'});
   assert.match(html,/<span class="activity heating">Heating<\/span><button class="timer entity-button" data-entity="timer" aria-label="Timer running, 25 left. Open timer details" title="Timer running, 25 left">.*<span>25 left<\/span>/);
   assert.match(t.api.STYLE,/\.activity\.heating\{color:var\(--text\)\}/);
   assert.doesNotMatch(t.update({timer:'unknown'}),/left</);

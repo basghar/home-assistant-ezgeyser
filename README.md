@@ -165,8 +165,12 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   **Off**. Select it for its [details](#next-scheduled-event). **Boost** and **Vacation** appear as pills while on.
 - **Footer:** the status chip starts with the flame for the burner, whose two bars are its two sides, and the bolt for
   the electric elements, one bar each. A filled icon means the flag is on, an outline means off, and
-  dimmed means unknown. After a divider it says **Idle** or **Heating**, then the time left while a timer runs. The chip
-  is outlined while idle and tinted in the gas or electric colour while heating (gas when both heat). While the heating
+  dimmed means unknown. After a divider it says **Heating** when both flame sensors or either electric element
+  report on, **Flame detected** when only one flame sensor reports on and both elements are off, or **Idle** when all
+  four flags are off; then the time left while a timer runs. The individual flame bars still show each sensor. The chip
+  is outlined while idle or showing **Flame detected**, and tinted in the gas or electric colour while heating
+  (gas when both flame sensors report on, electric when an element is on with only one flame sensor). These labels do
+  not establish valve position or the cause of a flame indication. While the heating
   status is unknown it holds only the dimmed icons, and a running timer follows it. The **Mode** pill shows flame and
   bolt icons for gas only, electric only, or both with an arrow for hybrid, and reads **Unknown** for any other source;
   select it for source details. On the right are the Wi-Fi icon, whose lit arcs show the level (unlit arcs stay visible,

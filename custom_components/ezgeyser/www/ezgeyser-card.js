@@ -534,16 +534,19 @@ class EzGeyserCard extends HTMLElement {
     if (this._dialog.open) this._schedule ? this._showDetails() : this._dialog.close();
     const heatingKnown = !missing && !unknown && !unreachable;
     const left = on('burner_left'), right = on('burner_right'), el1 = on('element_1'), el2 = on('element_2');
-    const heating = left || right || el1 || el2;
+    // A lone flame input can persist after shutdown; keep it visible without calling it gas heating.
+    const gasHeating = left && right;
+    const heating = gasHeating || el1 || el2;
+    const activityText = heating ? 'Heating' : left || right ? 'Flame detected' : 'Idle';
     // The live state only; unknown shows no text, the dimmed heat icons say it. The configured source is the mode pill.
-    const activity = !heatingKnown ? '' : `<span class="activity ${heating ? 'heating' : ''}">${heating ? 'Heating' : 'Idle'}</span>`;
+    const activity = !heatingKnown ? '' : `<span class="activity ${heating ? 'heating' : ''}">${activityText}</span>`;
     const remaining = numeric(shown.timer);
     const timer = remaining !== null && remaining > 0 ? `Timer running, ${remaining} left` : null;
     const timerButton = timer ? `<button class="timer entity-button" data-entity="timer" aria-label="${escape(timer)}. Open timer details" title="${escape(timer)}">${icon('clock')}<span>${escape(remaining)} left</span></button>` : '';
-    // One chip for the heat icons, the state and the timer: outlined while idle or unknown (icons only), tinted in the
+    // One chip for the heat icons, the state and the timer: outlined while idle, lone flame or unknown (icons only), tinted in the
     // colour of what heats, gas when both do. The border stays, transparent, so tinting never changes the chip's size.
     // An unknown status keeps a running timer, after the chip.
-    const tint = !heatingKnown ? '' : left || right ? 'gas' : el1 || el2 ? 'electric' : '';
+    const tint = !heatingKnown ? '' : gasHeating ? 'gas' : el1 || el2 ? 'electric' : '';
     const heatStatus = `<div class="heat-status${tint ? ` tint-${tint}` : ''}"><div class="sources">${heatControls('gas',left,right,2,heatingKnown)}${heatControls('electric',el1,el2,config.element_count || 2,heatingKnown)}</div>${heatingKnown ? `<span class="state-text">${activity}${timerButton}</span>` : ''}</div>${heatingKnown ? '' : timerButton}`;
     // last_updated is an HA state timestamp, not the last successful poll time.
     const lastTime = this._last ? Object.values(this._last).map(s => s?.last_updated).filter(Boolean).sort().at(-1) : null;
