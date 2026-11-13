@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.8 (2026-11-13)
+
+- Card: each tank half is coloured by its own sensor's reading, from blue for cold water (15 °C and below) through
+  lavender, orchid, magenta and rose to red at 60 °C. Unequal readings are pushed one degree further apart, so even a
+  1 °C difference shows. The halves are equal and separated by a small gap; a sensor that is not reporting is grey
+  hatching. The bar's label reads, for example, "Top 52.4 °C, bottom 49.0 °C".
+
 ## 0.6.7 (2026-11-13)
 
 - Card: require both flame sensors for gas **Heating**; either electric element still counts as heating. A lone
