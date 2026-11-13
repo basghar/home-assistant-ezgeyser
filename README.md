@@ -155,8 +155,8 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
 
 ### Reading the card
 
-- **Tank bar:** the top half is the top sensor and the bottom half the bottom sensor. The colour runs from blue (cool)
-  through amber to red (hot), with extra lightness contrast so that even a 1 °C difference shows. The colours are a
+- **Tank bar:** the top half is the top sensor and the bottom half the bottom sensor. The warmer half is red and the cooler half blue, with extra lightness contrast so that even a 1 °C difference shows.
+  Equal readings and a single valid reading use a blue-to-red temperature scale. The colours are a
   guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor reports a fault.
 - **Badge:** **All OK**, the one problem by name (**Top sensor**, **Bottom sensor**, **Weak Wi-Fi**, **Cloud
   offline** or **Clock off**), or how many there are, such as **3 issues**; its tooltip lists them.

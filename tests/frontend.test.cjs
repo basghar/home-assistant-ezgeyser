@@ -260,7 +260,8 @@ test('Fahrenheit zero target, bottom main, single element and HTML escaping',() 
 });
 test('tank has visible contrast at one degree, equal colours at equality, null for faults',() => {
   const {api}=setup();const [a,b]=api.tankColors(43,42);
-  assert.notEqual(a,b); assert.match(a,/67.33/);assert.match(b,/42.66/);
+  assert.match(a,/^hsl\(5\.00 76% 42\.66/);assert.match(b,/^hsl\(220\.00 76% 67\.33/);
+  const reversed=api.tankColors(42,43);assert.equal(reversed[0],b);assert.equal(reversed[1],a);
   const equal=api.tankColors(43,43);assert.equal(equal[0],equal[1]);assert.equal(api.tankColors(null,43)[0],'var(--off)');
 });
 test('configuration rejects invalid values and more-info uses main entity',() => {

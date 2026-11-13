@@ -225,8 +225,8 @@ function detailsHtml(view, showSource) {
     <dl>${row('Target',target)}${showSource ? row('Heat source',view.source) + row('Switch-over',view.switchOver) : ''}${row('Repeats',view.repeats)}</dl>
     <footer><button class="text-button" data-entity="next_event">History</button><button class="filled-button" data-close>Close</button></footer></div>`;
 }
-// Absolute hue anchors preserve the cool-to-hot meaning. A bounded relative
-// lightness contrast makes a small top/bottom difference visible inside the tank.
+// Equal or single readings use the absolute temperature hue; otherwise red and blue
+// distinguish the warmer and cooler halves, with additional lightness contrast.
 function tankColors(top, bottom) {
   const anchors = [[20,220],[30,165],[40,40],[50,25],[60,12],[75,0]];
   function hue(t) {
@@ -242,7 +242,12 @@ function tankColors(top, bottom) {
   const difference = top !== null && bottom !== null ? top-bottom : 0;
   // At a 1°C delta the halves differ by 24 lightness points; never exaggerate numbers.
   const contrast = Math.abs(difference) < .05 ? 0 : Math.min(18, 12 + Math.abs(difference)/3);
-  return [top,bottom].map((t,i) => t === null ? 'var(--off)' : `hsl(${hue(t).toFixed(2)} 76% ${55 + (i === 0 ? 1 : -1)*Math.sign(difference)*contrast}%)`);
+  return [top,bottom].map((t,i) => {
+    if (t === null) return 'var(--off)';
+    const relative = (i === 0 ? 1 : -1)*Math.sign(difference);
+    const colorHue = contrast ? (relative > 0 ? 5 : 220) : hue(t);
+    return `hsl(${colorHue.toFixed(2)} 76% ${55 - relative*contrast}%)`;
+  });
 }
 // The number's and the second line's line heights are trimmed to the glyphs, so the text block centres on its digits.
 // The middle row is always as tall as a full right column (target, event and a mode line), with or without modes, so
