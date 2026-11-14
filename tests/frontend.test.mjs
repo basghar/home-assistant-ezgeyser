@@ -441,7 +441,7 @@ test('the mode pill: the word, a divider, then flame and bolt, allowed or not, w
     /^<button class="mode entity-button" data-entity="source" aria-label="Mode: gas only. Open heating source details" title="Mode: gas only"><span class="mode-word">Mode<\/span><span class="mode-icons">/,
   );
   assert.deepEqual(icons(html), ['mode-icon allowed', 'mode-icon']);
-  assert.ok(pill(html).indexOf('M12 2.5C12') < pill(html).indexOf('M13.6 2 5'));
+  assert.ok(pill(html).indexOf('M12 10.941c') < pill(html).indexOf('M13.6 2 5'));
   assert.doesNotMatch(pill(html), /Gas only|Hybrid|Electric/);
   html = t.update({ source: 'hybrid' });
   assert.match(

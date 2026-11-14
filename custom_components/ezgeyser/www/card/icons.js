@@ -31,9 +31,10 @@ export const PATHS = {
     'M9.58 5.548q.361-.166.752-.286c1.88-.572 3.956-.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 .957-.383 1.824-1.003 2.454M18 18.004H6.657C4.085 18 2 15.993 2 13.517s2.085-4.482 4.657-4.482c.13-.582.37-1.128.7-1.62M3 3l18 18',
 };
 
-// The live heat icons and the mode pill draw these filled or outlined, so they are not Tabler strokes.
+// The live heat icons and the mode pill draw these filled or outlined. Gas is the Tabler flame (it was a teardrop that
+// read as water), the same path as the Android app's; it ends where it starts, so it also fills cleanly.
 export const HEAT_GLYPHS = {
-  gas: 'M12 2.5C12 2.5 5 9.5 5 14.5a7 7 0 0 0 14 0C19 9.5 12 2.5 12 2.5Z',
+  gas: 'M12 10.941c2.333-3.308.167-7.823-1-8.941c0 3.395-2.235 5.299-3.667 6.706C5.903 10.114 5 12 5 14.294C5 17.998 8.134 21 12 21s7-3.002 7-6.706c0-1.712-1.232-4.403-2.333-5.588c-2.084 3.353-3.257 3.353-4.667 2.235',
   electric: 'M13.6 2 5 13.4h6.2L10.2 22 19 10.4h-6.2L13.6 2Z',
 };
 
