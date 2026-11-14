@@ -9,11 +9,13 @@
   body.light{background:#fafafa}body.dark{background:#111111}
   #stage{display:inline-grid;gap:16px;padding:24px;align-items:start}
 </style>
-<script src="../../custom_components/ezgeyser/www/ezgeyser-card.js"></script>
+<script type="module" src="../../custom_components/ezgeyser/www/ezgeyser-card.js"></script>
 </head>
 <body>
 <div id="stage"></div>
-<script>
+<script type="module">
+import { FIELDS } from '../../custom_components/ezgeyser/www/card/entities.js';
+
 // Every reading below is made up. Heating states have not been captured from a real geyser. Event times are local
 // (capture.sh renders in Asia/Karachi) and relative to today, so "+1" stays right whenever this runs. The dashboard
 // scenes are the owner's four mockup scenarios (Dashboard card update 2); Ground Floor Bathroom has no schedule.
@@ -92,9 +94,10 @@ function states(id, values, override, attributes = GEYSERS[id].event) {
                  ...(key === 'next_event' ? attributes : {})}},
   ]));
 }
-const registry = Object.keys(GEYSERS).flatMap(id => Object.entries(FIELDS).map(([key,suffix]) => ({
-  entity_id:`${isSensor(key) ? 'sensor' : 'binary_sensor'}.${id}_${suffix}`, platform:'ezgeyser',
-  device_id:`device-${id}`, unique_id:`70041d1234${id.length}_${suffix}`,
+// hass.entities: each geyser's entities, by entity ID.
+const entities = Object.fromEntries(Object.keys(GEYSERS).flatMap(id => Object.entries(FIELDS).map(([key,translationKey]) => {
+  const entityId = `${isSensor(key) ? 'sensor' : 'binary_sensor'}.${id}_${translationKey}`;
+  return [entityId, {entity_id:entityId, platform:'ezgeyser', device_id:`device-${id}`, translation_key:translationKey}];
 })));
 
 // What every scene must hold: no footer item outside the footer or over another, Unknown in full, and cards of the same
@@ -127,7 +130,7 @@ async function main() {
   stage.style.gridTemplateColumns = scene.widths ? 'max-content' : scene.columns.map(w => `${w}px`).join(' ');
   const live = Object.assign({}, ...Object.keys(GEYSERS).map(id => states(id, GEYSERS[id].values)));
   const devices = Object.fromEntries(Object.keys(GEYSERS).map((id,i) => [`device-${id}`, {name:GEYSERS[id].name,configuration_url:`http://192.168.1.${50+i}/`}]));
-  const hass = {states:live, devices, locale:{language:'en'}, config:{unit_system:{temperature:'°C'}}, themes:{darkMode:scene.dark}, callWS:async () => registry};
+  const hass = {states:live, devices, locale:{language:'en'}, config:{unit_system:{temperature:'°C'}}, themes:{darkMode:scene.dark}, entities};
   const cards = scene.cards.map((id, i) => {
     const card = document.createElement('ezgeyser-card');
     if (scene.widths) card.style.width = `${scene.widths[i]}px`;

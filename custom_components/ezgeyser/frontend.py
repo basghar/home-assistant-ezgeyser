@@ -10,8 +10,22 @@ from homeassistant.components.lovelace.resources import ResourceStorageCollectio
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 
-CARD_PATH = "/ezgeyser/ezgeyser-card.js"
-LEGACY_CARD_PATH = "/local/ezgeyser-card.js"
+# The card is ES modules: ezgeyser-card.js imports the rest from card/. The whole folder is served under the
+# integration's version, so an upgrade changes every module's URL and no browser keeps an old one.
+CARD_ROOT = "/ezgeyser"
+CARD_FILE = "ezgeyser-card.js"
+# Resource URLs of earlier releases: unversioned, or added by hand to /local.
+LEGACY_CARD_PATHS = (f"{CARD_ROOT}/{CARD_FILE}", f"/local/{CARD_FILE}")
+
+
+def card_url(version: str) -> str:
+    """Return the dashboard resource URL of the card in this version."""
+    return f"{CARD_ROOT}/{version}/{CARD_FILE}"
+
+
+def _is_card_resource(url: str) -> bool:
+    path = urlsplit(url).path
+    return path in LEGACY_CARD_PATHS or (path.startswith(f"{CARD_ROOT}/") and path.endswith(f"/{CARD_FILE}"))
 
 
 async def async_register_card(hass: HomeAssistant) -> None:
@@ -20,9 +34,10 @@ async def async_register_card(hass: HomeAssistant) -> None:
         return
 
     integration = await async_get_integration(hass, "ezgeyser")
-    url = f"{CARD_PATH}?v={integration.version}"
+    version = str(integration.version)
+    url = card_url(version)
     await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_PATH, str(Path(__file__).parent / "www" / "ezgeyser-card.js"), False)]
+        [StaticPathConfig(f"{CARD_ROOT}/{version}", str(Path(__file__).parent / "www"), False)]
     )
     lovelace = hass.data.get(LOVELACE_DATA)
     if lovelace is None or not isinstance(lovelace.resources, ResourceStorageCollection):
@@ -33,7 +48,7 @@ async def async_register_card(hass: HomeAssistant) -> None:
 
     resources = lovelace.resources
     await resources.async_get_info()  # Public API ensures resources are loaded before inspecting them.
-    existing = [item for item in resources.async_items() if urlsplit(item["url"]).path in (CARD_PATH, LEGACY_CARD_PATH)]
+    existing = [item for item in resources.async_items() if _is_card_resource(item["url"])]
     if existing:
         await resources.async_update_item(existing[0]["id"], {"url": url, "res_type": "module"})
         for duplicate in existing[1:]:

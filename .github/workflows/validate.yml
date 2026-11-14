@@ -43,5 +43,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check custom_components/ezgeyser/www/ezgeyser-card.js
-      - run: node --test tests/frontend.test.cjs
+      - run: npx --yes prettier@3.6.2 --check custom_components/ezgeyser/www tests/frontend.test.mjs
+      - run: node --test tests/frontend.test.mjs

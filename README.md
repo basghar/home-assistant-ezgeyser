@@ -140,8 +140,8 @@ To regenerate them, run `assets/screenshots/capture.sh` (needs Google Chrome).
 ## Geyser overview card
 
 The integration includes the **ezGeyser overview** dashboard card
-([`ezgeyser-card.js`](custom_components/ezgeyser/www/ezgeyser-card.js)) and registers it on its own: there are no
-files to copy and no resources to add. It has no dependencies and makes no network requests of its own.
+([`www/`](custom_components/ezgeyser/www/)) and registers it on its own: there are no files to copy and no resources
+to add. It has no dependencies and makes no network requests of its own.
 
 ### Add the card to a dashboard
 
@@ -179,8 +179,7 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   muted), the cloud link and, only while it is off, the device clock; amber marks a problem.
 - **Unreachable:** the last values this browser saw, muted, with the time Home Assistant last updated them. That is
   not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
-- **Loading entities**, **Registry unavailable** or **Check entities:** the card cannot find the selected geyser's
-  entities.
+- **Check entities:** the card cannot find the selected geyser's entities.
 - **Selecting** the flame icon or its bars opens Home Assistant's History page with both flame sensors selected.
   The electrical icon and its bars open history for one or both elements, according to **Electric elements**.
   Both show the last six hours ending at the time you click. A reading, tank half, pill or footer item opens that
@@ -312,6 +311,13 @@ The tests use `pytest-homeassistant-custom-component` 0.13.375 (Home Assistant 2
 ```sh
 python3.14 -m venv .venv && .venv/bin/pip install pytest-homeassistant-custom-component==0.13.375 zeroconf ruff mypy
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy && .venv/bin/pytest -q
+```
+
+The card is plain ES modules, with no build step: [`ezgeyser-card.js`](custom_components/ezgeyser/www/ezgeyser-card.js)
+is the element, and its opening comment maps the modules in `card/`. Its tests and format check need Node.js 22:
+
+```sh
+node --test tests/frontend.test.mjs && npx prettier@3.6.2 --check custom_components/ezgeyser/www tests/frontend.test.mjs
 ```
 
 The **Validate** workflow runs the same checks on every push, plus Home Assistant's `hassfest` and the HACS validation.
