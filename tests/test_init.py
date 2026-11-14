@@ -411,7 +411,9 @@ async def test_a_failed_or_unreadable_schedules_read_keeps_the_last_schedules(
     hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     start = (dt_util.now() + timedelta(hours=2)).strftime("%H:%M")
-    schedules = json.dumps([{"isEnabled": True, "repetitionIsEnabled": False, "start": start}]).encode()
+    schedules = json.dumps(
+        [{"isEnabled": True, "repetitionIsEnabled": True, "start": start, "weekdays": [True] * 7}]
+    ).encode()
     _answer(geyser, _status(now=_device_now(after=0)), schedules=schedules)
     await _setup(hass, entry)
     event = "sensor.kitchen_next_scheduled_event"

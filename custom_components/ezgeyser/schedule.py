@@ -25,7 +25,8 @@ def parse_schedules(body: bytes) -> list[dict[str, Any]]:
 class NextEvent:
     """When the next schedule starts and what it sets. A field is None when the entry does not name it.
 
-    `weekdays` is the entry's seven repeat flags, Sunday first (unverified, as in the Android app); None for a one-off.
+    `weekdays` is the entry's seven day flags, Sunday first (the firmware's bit order; the JSON order is unverified, as
+    in the Android app). The geyser runs an entry on its flagged days whether or not it says it repeats.
     """
 
     at: datetime
@@ -61,7 +62,7 @@ def _event(at: datetime, schedule: dict[str, Any]) -> NextEvent:
         target=scheduled_target(schedule),
         source_code=int(source) if source is not None and source.is_integer() else None,
         switch_over={0.0: False, 1.0: True}.get(switch_over) if switch_over is not None else None,
-        weekdays=tuple(days) if schedule.get("repetitionIsEnabled") and isinstance(days, list) else None,
+        weekdays=tuple(days) if isinstance(days, list) else None,
     )
 
 
@@ -93,11 +94,8 @@ def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime
             return None
         if not enabled:
             continue
-        repeats = schedule.get("repetitionIsEnabled")
         days = schedule.get("weekdays")
-        if type(repeats) is not bool:
-            return None
-        if repeats and (not isinstance(days, list) or len(days) != 7 or any(type(day) is not bool for day in days)):
+        if not isinstance(days, list) or len(days) != 7 or any(type(day) is not bool for day in days):
             return None
         try:
             start = time.fromisoformat(schedule["start"])
@@ -105,10 +103,11 @@ def next_event(schedules: list[dict[str, Any]], device_clock: int, now: datetime
                 return None
         except KeyError, TypeError, ValueError:
             return None
-        # Match Android: weekday 0 is assumed Sunday; one-off entries use the next daily occurrence.
+        # The firmware's executor checks only the weekday flags (Sunday first), not `repetitionIsEnabled`, so an entry
+        # runs on its flagged days only and one with no day set never runs, as in the Android app.
         for offset in range(9):
             date = device_now.date() + timedelta(days=offset)
-            if repeats and isinstance(days, list) and not days[(date.weekday() + 1) % 7]:
+            if not days[(date.weekday() + 1) % 7]:
                 continue
             candidate = datetime.combine(date, start)
             if candidate > device_now:

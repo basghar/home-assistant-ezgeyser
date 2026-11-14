@@ -261,11 +261,11 @@ a reading the rounding starts over. The level sensor still uses the original sig
 ### Next scheduled event
 
 Schedules are read once a minute and edited only in the official ezGeyser app; after a failed or unreadable read, the
-last schedules read are kept. The device clock is taken as local wall time, so Home Assistant must use the geyser's
-time zone. A clock more than two minutes off (**Device clock** shows **Problem**), or an empty schedule or one that
-cannot be interpreted, makes the event unavailable. Weekday flags start on Sunday, as in the Android app. The event
-shows the scheduled wall time, as Android does; small differences between the device clock and Home Assistant do not
-shift the displayed time.
+last schedules read are kept. The device clock is taken as local wall time, so Home Assistant must use the geyser's time
+zone. A clock more than two minutes off (**Device clock** shows **Problem**), or an empty schedule or one that cannot be
+interpreted, makes the event unavailable. Weekday flags start on Sunday, as in the Android app; a schedule runs only on
+its flagged days, as the geyser does. The event shows the scheduled wall time, as Android does; small differences
+between the device clock and Home Assistant do not shift the displayed time.
 
 Selecting the event on the card opens a window with what that schedule sets; **History** there opens the sensor. The
 same values are the sensor's attributes, each `null` when the schedule leaves it out or there is no event:
@@ -276,7 +276,7 @@ same values are the sensor's attributes, each `null` when the schedule leaves it
 | `heating_off` | `true` when the scheduled target is 0. |
 | `source`, `source_code` | As for the heating source sensor. |
 | `switch_over` | `true` when the geyser may switch to the other source while gas or mains is unavailable. |
-| `repeat_days` | `sunday` to `saturday`; `null` for a one-off schedule. |
+| `repeat_days` | The days it runs on, `sunday` to `saturday`. |
 
 ## Safety
 

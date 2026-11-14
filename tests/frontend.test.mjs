@@ -281,7 +281,7 @@ test('today has no badge; days further ahead count up, in the server or browser 
     'Weekdays',
   );
   assert.equal(view('2026-11-14T01:00:00Z', { ...EVENT, repeat_days: ['sunday', 'wednesday'] }).repeats, 'Wed, Sun');
-  assert.equal(view('2026-11-14T01:00:00Z', { ...EVENT, repeat_days: null }).repeats, 'Once');
+  assert.equal(view('2026-11-14T01:00:00Z', { ...EVENT, repeat_days: null }).repeats, 'No days');
   assert.equal(view('unknown'), null);
 });
 test('the event line opens a details window with every setting, and History opens more-info', () => {

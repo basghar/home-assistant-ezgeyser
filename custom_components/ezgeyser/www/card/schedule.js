@@ -20,9 +20,10 @@ function calendarDay(date, timeZone) {
   return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
 }
 
-// `repeat_days` is Sunday first (the integration's unverified order); shown Monday first.
+// `repeat_days` is Sunday first (the integration's unverified order); shown Monday first. A schedule runs on its flagged
+// days only, so one with none never runs ("No days"), as in the Android app.
 function repeatText(days, lang) {
-  if (!days?.length) return 'Once';
+  if (!days?.length) return 'No days';
   if (days.length === 7) return 'Every day';
   const set = new Set(days);
   if (days.length === 5 && DAYS.slice(1, 6).every((d) => set.has(d))) return 'Weekdays';

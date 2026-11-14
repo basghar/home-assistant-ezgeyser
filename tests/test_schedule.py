@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta, timezone
 from custom_components.ezgeyser.schedule import NextEvent, clock_off, next_event
 import pytest
 
+EVERY_DAY = [True] * 7
+
 
 def test_device_wall_clock_and_sunday_first() -> None:
     zone = timezone(timedelta(hours=5))
@@ -27,9 +29,9 @@ def test_disabled_invalid_and_one_off() -> None:
     encoded = int(now.timestamp())
     assert next_event([{"isEnabled": False}], encoded, now) is None
     assert next_event([{"isEnabled": True}], encoded, now) is None
-    assert next_event([{"isEnabled": True, "repetitionIsEnabled": False, "start": "21:00"}], encoded, now) == NextEvent(
-        now + timedelta(hours=1), None
-    )
+    assert next_event(
+        [{"isEnabled": True, "repetitionIsEnabled": False, "start": "21:00", "weekdays": EVERY_DAY}], encoded, now
+    ) == NextEvent(now + timedelta(hours=1), None, weekdays=tuple(EVERY_DAY))
 
 
 def test_scheduled_target_and_tie() -> None:
@@ -41,7 +43,13 @@ def test_scheduled_target_and_tie() -> None:
             {"targetVariableId": "source", "value": 1},
             {"targetVariableId": "temperatureTarget", "value": value},
         ]
-        return {"isEnabled": True, "repetitionIsEnabled": False, "start": start, "targetVariables": variables}
+        return {
+            "isEnabled": True,
+            "repetitionIsEnabled": False,
+            "start": start,
+            "weekdays": EVERY_DAY,
+            "targetVariables": variables,
+        }
 
     def target(*entries: dict[str, object]) -> tuple[datetime, float | None] | None:
         event = next_event(list(entries), encoded, now)
@@ -99,7 +107,7 @@ def test_next_event_preserves_scheduled_time_with_clock_skew(skew_seconds: int, 
     zone = timezone(timedelta(hours=5))
     now = datetime(2026, 11, 11, 20, tzinfo=zone)
     encoded = int(now.replace(tzinfo=UTC).timestamp()) + skew_seconds
-    schedule = {"isEnabled": True, "repetitionIsEnabled": False, "start": start}
+    schedule = {"isEnabled": True, "repetitionIsEnabled": False, "start": start, "weekdays": EVERY_DAY}
 
     event = next_event([schedule], encoded, now)
 
@@ -114,9 +122,28 @@ def test_device_clock_still_selects_the_next_occurrence() -> None:
     zone = timezone(timedelta(hours=5))
     now = datetime(2026, 11, 12, 4, 29, 50, tzinfo=zone)
     encoded = int(now.replace(tzinfo=UTC).timestamp()) + 20
-    schedule = {"isEnabled": True, "repetitionIsEnabled": False, "start": "04:30"}
+    schedule = {"isEnabled": True, "repetitionIsEnabled": False, "start": "04:30", "weekdays": EVERY_DAY}
 
     event = next_event([schedule], encoded, now)
 
     assert event is not None
     assert event.at == datetime(2026, 11, 13, 4, 30, tzinfo=zone).astimezone(UTC)
+
+
+def test_an_entry_runs_on_its_flagged_days_whether_or_not_it_repeats() -> None:
+    # Wednesday 2026-11-11 20:00; the firmware checks only the day flags (Sunday first), as the Android app now does.
+    now = datetime(2026, 11, 11, 20, tzinfo=UTC)
+    encoded = int(now.timestamp())
+    friday = [False, False, False, False, False, True, False]
+
+    def entry(days: object, repeats: bool = False) -> dict[str, object]:
+        return {"isEnabled": True, "repetitionIsEnabled": repeats, "start": "21:00", "weekdays": days}
+
+    event = next_event([entry(friday)], encoded, now)
+    assert event is not None
+    assert event.at == datetime(2026, 11, 13, 21, tzinfo=UTC)
+    assert event.weekdays == tuple(friday)
+    # No day set: it never runs. Flags missing or malformed: not interpreted safely, so no event at all.
+    assert next_event([entry([False] * 7)], encoded, now) is None
+    assert next_event([{"isEnabled": True, "repetitionIsEnabled": False, "start": "21:00"}], encoded, now) is None
+    assert next_event([entry([True] * 6, repeats=True)], encoded, now) is None

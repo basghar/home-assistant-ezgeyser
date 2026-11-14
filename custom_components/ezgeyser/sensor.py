@@ -146,7 +146,7 @@ class NextEventSensor(EzGeyserEntity, SensorEntity):
         """The next event's settings, for the card's details and for automations.
 
         `target_temperature` is in Home Assistant's temperature unit and None when the event turns heating off
-        (`heating_off`) or names no target. `repeat_days` is None for a one-off entry; its Sunday-first order is
+        (`heating_off`) or names no target. `repeat_days` lists the days the entry runs on; its Sunday-first order is
         unverified.
         """
         event = self.coordinator.next_event
