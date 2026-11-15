@@ -1,12 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.6.9 (2026-11-15)
 
 - **Network Wi-Fi signal** gains a fifth level: **Weak** is now -71 to -80 dBm and **Very weak** (`very_weak`) -81 dBm
   or less, the same in the Android app. A geyser sends so little that a weak signal still works, so the card's
   **Weak Wi-Fi** issue and amber Wi-Fi icon now mean Very weak only; Weak shows the dot alone, uncoloured.
 - An `rssi` of 0, which the geyser sends while not connected, is now no reading: both Wi-Fi sensors are unknown instead
   of Excellent and 0 dBm.
+- Schedules run only on their flagged days, as the geyser does: an entry with no days never runs, and a one-off no
+  longer fires at its next time on any day. `repeat_days` is always a list of days, and the card says **No days**
+  instead of **Once**.
+- Card: gas is drawn as a flame instead of a teardrop, the same icon as the Android app.
 
 ## 0.6.8 (2026-11-13)
 
