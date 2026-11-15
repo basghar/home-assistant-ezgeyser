@@ -12,7 +12,7 @@ status. It only reads: it never changes anything on the geyser, and it never tal
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/dashboard-dark.png">
-  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle with all OK, heating on gas with a timer and Boost, idle in vacation mode with no schedule, and a top sensor fault with weak Wi-Fi and the cloud offline. Each shows its target, or Target not set, and its next scheduled event on the right, and Heating or Idle in the footer" src="assets/screenshots/dashboard-light.png" width="744">
+  <img alt="Four ezGeyser overview cards on a Home Assistant dashboard: idle with all OK, heating on gas with Boost, idle in vacation mode with no schedule, and a top sensor fault with weak Wi-Fi and the cloud offline. Each shows its target, or Target not set, and its next scheduled event on the right, and Heating or Idle in the footer" src="assets/screenshots/dashboard-light.png" width="744">
 </picture>
 
 <sub>The bundled dashboard card, with simulated readings. More in [Screenshots](#screenshots).</sub>
@@ -123,7 +123,7 @@ The real card with **simulated readings**; the geysers and values are made up.
 
 | | |
 |---|---|
-| ![Upstairs idle on gas: 39.5 °C top, 35.1 °C bottom, target not set, next event 9:30 PM to 55°, Wi-Fi Good](assets/screenshots/idle.png) | ![Kitchen heating on gas with a timer and Boost, dark theme](assets/screenshots/gas-heating.png) |
+| ![Upstairs idle on gas: 39.5 °C top, 35.1 °C bottom, target not set, next event 9:30 PM to 55°, Wi-Fi Good](assets/screenshots/idle.png) | ![Kitchen heating on gas with Boost, dark theme](assets/screenshots/gas-heating.png) |
 | **Idle** | **Heating on gas**, dark theme |
 | ![Laundry heating on both electric elements, in vacation mode](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault, weak Wi-Fi and the cloud offline, dark theme](assets/screenshots/sensor-fault.png) |
 | **Heating on the elements** | **Three issues**, dark theme |
@@ -167,17 +167,14 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   next scheduled event: its time, **+1** when it is tomorrow (**+2** and so on), and the temperature it sets, or
   **Off**. Select it for its [details](#next-scheduled-event). **Boost** and **Vacation** appear as pills while on.
 - **Footer:** the status chip starts with the flame for the burner, whose two bars are its two sides, and the bolt for
-  the electric elements, one bar each. A filled icon means the flag is on, an outline means off, and
-  dimmed means unknown. After a divider it says **Heating** when both flame sensors or either electric element
-  report on, **Flame detected** when only one flame sensor reports on and both elements are off, or **Idle** when all
-  four flags are off; then the time left while a timer runs. The individual flame bars still show each sensor. The chip
-  is outlined while idle or showing **Flame detected**, and tinted in the gas or electric colour while heating
-  (gas when both flame sensors report on, electric when an element is on with only one flame sensor). These labels do
-  not establish valve position or the cause of a flame indication. While the heating
-  status is unknown it holds only the dimmed icons, and a running timer follows it. The **Mode** pill shows flame and
-  bolt icons for gas only, electric only, or both with an arrow for hybrid, and reads **Unknown** for any other source;
-  select it for source details. On the right are the Wi-Fi icon, whose lit arcs show the level (unlit arcs stay visible,
-  muted), the cloud link and, only while it is off, the device clock; amber marks a problem.
+  the electric elements, one bar each. A filled icon means the flag is on, an outline means off, and dimmed means
+  unknown. After a divider it says **Heating**, on a slight red, when both flame sensors or either electric element
+  report on, or **Idle** when all four flags are off. When only one flame sensor reports on, the half-lit flame alone
+  says so (screen readers hear **Flame detected**). These labels do not establish valve position or the cause of a
+  flame indication. While the heating status is unknown the chip holds only the dimmed icons. The **Mode** pill shows
+  flame and bolt icons for gas only, electric only, or both with an arrow for hybrid, and reads **Unknown** for any
+  other source; select it for source details. On the right are the Wi-Fi icon, whose lit arcs show the level (unlit
+  arcs stay visible, muted), the cloud link and, only while it is off, the device clock; amber marks a problem.
 - **Unreachable:** the last values this browser saw, muted, with the time Home Assistant last updated them. That is
   not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
 - **Check entities:** the card cannot find the selected geyser's entities.
@@ -190,10 +187,10 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   unreachable or while its address is unavailable. Your browser must be on the geyser's network to reach that page.
 
 Cards are all the same height, follow Home Assistant's light or dark mode, fit their column, and work in Sections and
-Masonry views. Text never shrinks or wraps: when a card is too narrow, the mode pill loses its word and divider, then
-the timer's text is left out, then the state text is shortened. Cards narrower than about 260 px put the Wi-Fi and
-cloud icons on a second footer line, and narrower than about 185 px the mode pill too. Select the Wi-Fi icon for the
-level and its history. A missing or disabled entity just hides its item.
+Masonry views. Text never shrinks or wraps: when a card is too narrow, the status chip leaves out its word, then the
+mode pill its word and divider. Cards narrower than about 255 px put the Wi-Fi and cloud icons on a second footer
+line, and narrower than about 170 px the mode pill too. Select the Wi-Fi icon for the level and its history. A missing
+or disabled entity just hides its item.
 
 ### YAML configuration
 

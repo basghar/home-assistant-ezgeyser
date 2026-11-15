@@ -1,5 +1,5 @@
 // The card's styles. Text is never shrunk or wrapped; `fitLayout` (layout-fit.js) picks the adaptive classes
-// (.chips-icons, .stacked, .wrap-status, .wrap-mode, .no-mode-word, .no-timer-text, .truncate-state).
+// (.chips-icons, .stacked, .wrap-status, .wrap-mode, .no-state-word, .no-mode-word).
 export const STYLE = `
 /* Colours and sizes, light theme. The middle row is always as tall as a full right column (target, event and a
    mode line), with or without modes, so every card in a list is the same height. */
@@ -21,11 +21,13 @@ export const STYLE = `
   --dialog: #FBF8FF;
   --gas: #D9480F;
   --electric: #B86E00;
+  --heating-chip: #D32F2F;
   --wifi-off: #9896A0;
   --mode-off: #C4C2CC;
   --line-strong: #B5B3BE;
   --line-h: 18px;
   --chip-h: 22px;
+  --pill-h: 30px;
   --row-h: calc(2 * var(--line-h) + var(--chip-h) + 2 * 6px);
 }
 
@@ -47,6 +49,7 @@ export const STYLE = `
   --dialog: #2A2A2F;
   --gas: #FF8F57;
   --electric: #F2B33D;
+  --heating-chip: #FF6B6B;
   --wifi-off: #66656E;
   --mode-off: #4A4950;
   --line-strong: #57565E;
@@ -71,7 +74,7 @@ ha-card, .sample {
 
 /* The card, its buttons, and the header: name, status badge and the two round actions */
 .card {
-  padding: 12px 14px 10px;
+  padding: 12px 14px 0;
   outline: none;
 }
 
@@ -148,8 +151,8 @@ ha-card, .sample {
 .details-button {
   position: relative;
   flex: none;
-  width: var(--header-action-size, 22.8px);
-  height: var(--header-action-size, 22.8px);
+  width: var(--header-action-size, 21.12px);
+  height: var(--header-action-size, 21.12px);
   border: 0;
   background: none;
   color: var(--secondary);
@@ -344,14 +347,16 @@ ha-card, .sample {
   display: none;
 }
 
-/* Footer: the heat status chip, the mode pill and the connectivity icons */
+/* Footer: the heat status chip, the mode pill and the connectivity icons, reaching the card's bottom edge. Its lines are
+   one block, centred between the divider and the edge: one 30 px line in 48 px, or wrapped lines with the same 9 px
+   inset above and below. */
 .footer {
   border-top: 1px solid var(--line);
-  padding-top: 6px;
+  padding: 9px 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 31px;
+  min-height: 49px;
   font-size: 12px;
   color: var(--secondary);
   white-space: nowrap;
@@ -414,21 +419,18 @@ ha-card, .sample {
 }
 .activity {
   flex: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .activity.heating {
   color: var(--text);
 }
-.timer, .wifi, .cloud, .clock {
+.wifi, .cloud, .clock {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   flex: none;
 }
-.wifi .icon {
-  width: 18px;
-  height: 18px;
+.status .icon {
+  width: 20px;
+  height: 20px;
 }
 
 /* Mode pill: the configured heat source, in neutral colours */
@@ -436,10 +438,10 @@ ha-card, .sample {
   display: inline-flex;
   align-items: center;
   flex: none;
-  height: 20px;
-  padding: 0 7px;
+  height: var(--pill-h);
+  padding: 0 9px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 15px;
   font-size: 11px;
   line-height: 1;
   color: var(--secondary);
@@ -458,8 +460,8 @@ ha-card, .sample {
   gap: 3px;
 }
 .mode-icon {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   flex: none;
   fill: none;
   stroke: var(--mode-off);
@@ -470,8 +472,8 @@ ha-card, .sample {
   stroke: var(--text);
 }
 .mode-arrow {
-  width: 9px;
-  height: 9px;
+  width: 10.5px;
+  height: 10.5px;
   flex: none;
   fill: none;
   stroke: var(--tertiary);
@@ -480,15 +482,16 @@ ha-card, .sample {
   stroke-linejoin: round;
 }
 
-/* Heat status chip: outlined while idle, tinted in the colour of what heats */
+/* Heat status chip: outlined while idle, a slight red while heating, gas or electric (the lit icons tell them apart).
+   The heat icons have room above and below in the taller pill. */
 .heat-status {
   display: inline-flex;
   align-items: center;
   flex: none;
-  height: 20px;
-  padding: 0 7px;
+  height: var(--pill-h);
+  padding: 0 9px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 15px;
   font-size: 11px;
   line-height: 1;
 }
@@ -496,35 +499,23 @@ ha-card, .sample {
   gap: 3px;
 }
 .heat-status .heat-control, .heat-status .heat {
-  width: 16px;
-  height: 16px;
-}
-.heat-status .timer .icon {
-  width: 13px;
-  height: 13px;
+  width: 22px;
+  height: 22px;
 }
 .state-text {
   align-self: stretch;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   padding-left: 6px;
   margin-left: 6px;
   border-left: 1px solid var(--line-strong);
 }
-.tint-gas {
-  background: color-mix(in srgb, var(--gas) 16%, transparent);
+.tint-heating {
+  background: color-mix(in srgb, var(--heating-chip) 16%, transparent);
   border-color: transparent;
 }
-.tint-gas .state-text {
-  border-left-color: color-mix(in srgb, var(--gas) 50%, transparent);
-}
-.tint-electric {
-  background: color-mix(in srgb, var(--electric) 16%, transparent);
-  border-color: transparent;
-}
-.tint-electric .state-text {
-  border-left-color: color-mix(in srgb, var(--electric) 50%, transparent);
+.tint-heating .state-text {
+  border-left-color: color-mix(in srgb, var(--heating-chip) 50%, transparent);
 }
 @media (min-resolution: 2dppx) {
   .mode, .mode-word, .heat-status, .state-text {
@@ -532,12 +523,13 @@ ha-card, .sample {
   }
 }
 
-/* Connectivity icons at the end */
+/* Connectivity icons at the end; a pill tall, also on a line of their own */
 .status {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: none;
+  min-height: var(--pill-h);
   margin-left: auto;
 }
 .warn {
@@ -555,33 +547,23 @@ ha-card, .sample {
   color: var(--tertiary);
 }
 
-/* Footer steps for a narrow card, chosen by fitLayout */
-.no-mode-word .mode-word, .no-timer-text .timer span {
+/* Footer steps for a narrow card, chosen by fitLayout: words go whole, never shortened */
+.no-state-word .state-text, .no-mode-word .mode-word {
   display: none;
 }
-.truncate-state .heat-status {
-  flex: 0 1 auto;
-}
-.truncate-state .state-text {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-columns: minmax(0, max-content);
-}
-.truncate-state .activity {
-  min-width: 0;
-}
 
-/* Footer on two or three lines. A wrapped footer reserves its lines' height, for a footer with nothing to wrap. */
+/* Footer on two or three 30 px lines, 4 px apart. A wrapped footer reserves its lines' height, for a footer with nothing
+   to wrap. */
 .wrap-status .footer {
   flex-wrap: wrap;
   row-gap: 4px;
-  min-height: 49px;
+  min-height: 83px;
 }
 .wrap-status .start {
   flex-basis: 100%;
 }
 .wrap-mode .footer {
-  min-height: 73px;
+  min-height: 117px;
 }
 .wrap-mode .start {
   flex-wrap: wrap;

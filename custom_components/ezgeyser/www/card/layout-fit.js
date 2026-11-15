@@ -3,7 +3,8 @@
 // SAMPLE does not fit side by side, so cards of the same width always share a layout and height. The footer wraps by
 // the same kind of rule: the end group takes its own line iff SAMPLE's footer line does not fit, and the mode pill too
 // iff its start does not. The mode chips lose their words if the card's own row does not fit; the footer's first line
-// drops the mode pill's word, then the timer's text, then truncates the state text, stopping at the first step that fits.
+// drops the status chip's word whole (the tint or the outline already says it), then the mode pill's word, stopping at
+// the first step that fits.
 
 const ROW_GAP = 10;
 
@@ -17,7 +18,7 @@ export function fitLayout(m) {
   // On its own line the mode pill always drops its word (see `fitClasses`), which saves nothing on the first line.
   let footer = m.footer - (footerLines > 1 ? m.status : 0) - (footerLines > 2 ? m.mode : 0);
   let footerStep = 0;
-  for (const saving of [footerLines > 2 ? 0 : m.modeWord, m.timerText, m.activity]) {
+  for (const saving of [m.stateWord, footerLines > 2 ? 0 : m.modeWord]) {
     if (footer <= m.width) break;
     footer -= saving;
     footerStep += 1;
@@ -31,9 +32,8 @@ export function fitClasses(fit) {
     fit.stacked && 'stacked',
     fit.footerLines >= 2 && 'wrap-status',
     fit.footerLines >= 3 && 'wrap-mode',
-    (fit.footerStep >= 1 || fit.footerLines >= 3) && 'no-mode-word',
-    fit.footerStep >= 2 && 'no-timer-text',
-    fit.footerStep >= 3 && 'truncate-state',
+    fit.footerStep >= 1 && 'no-state-word',
+    (fit.footerStep >= 2 || fit.footerLines >= 3) && 'no-mode-word',
   ]
     .filter(Boolean)
     .join(' ');
@@ -62,10 +62,11 @@ export function measureCard(card) {
     left: widthOf('.left'),
     right: widthOf('.right'),
     footer: widthOf('.footer'),
+    // The status chip's word with its divider and the space before it: where the chip's word ends, less where its icons
+    // end. A chip without a word saves nothing.
+    stateWord: Math.max(0, rightOf('.state-text') - rightOf('.heat-status .sources')),
     // The mode word's saving includes its divider and the space after it: where the value starts, less where it starts.
     modeWord: leftOf('.mode-word + span') - leftOf('.mode-word'),
-    timerText: widthOf('.timer') - widthOf('.timer .icon'),
-    activity: widthOf('.activity'),
     // What wrapping takes off the first line, each with the gap before it: the end group, and the whole mode pill.
     status: rightOf('.footer') - rightOf('.start'),
     mode: rightOf('.mode') - rightOf('.start > :nth-last-child(2)'),

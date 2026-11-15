@@ -108,7 +108,6 @@ export function buildView({ config, hass, states, shown, status, deviceId, ids, 
   const [left, right, el1, el2] = ['burner_left', 'burner_right', 'element_1', 'element_2'].map(on);
   const gasHeating = left && right;
   const heating = gasHeating || el1 || el2;
-  const remaining = numeric(shown.timer);
 
   // last_updated is an HA state timestamp, not the last successful poll time.
   const lastTime = last
@@ -149,12 +148,13 @@ export function buildView({ config, hass, states, shown, status, deviceId, ids, 
       burners: [left, right],
       elements: [el1, el2],
       elementCount: config.element_count || 2,
-      // Tinted in the colour of what heats, gas when both do; outlined while idle, lone flame or unknown.
-      tint: !heatKnown ? '' : gasHeating ? 'gas' : el1 || el2 ? 'electric' : '',
+      // A slight red while heating, whatever heats (the lit icons say which); outlined while idle, lone flame or unknown.
+      tinted: heatKnown && heating,
       heating,
+      // The full state, for screen readers; the visible word, none for a lone flame, which its half-lit icon says.
       activity: heating ? 'Heating' : left || right ? 'Flame detected' : 'Idle',
+      word: heating ? 'Heating' : left || right ? null : 'Idle',
     },
-    timer: remaining !== null && remaining > 0 ? { remaining, label: `Timer running, ${remaining} left` } : null,
     mode: modeView(shown.source),
     link,
     lastUpdated: lastTime ? new Date(lastTime).toLocaleString(lang) : null,

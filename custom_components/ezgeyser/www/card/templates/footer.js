@@ -15,12 +15,13 @@ function heatLabel(kind, first, second, count, known) {
   return `Element 1 ${first ? 'on' : 'off'}, element 2 ${second ? 'on' : 'off'}`;
 }
 
-// A flame or bolt over one bar per burner side or element (a single bar for a single element).
+// A flame or bolt over one bar per burner side or element (a single bar for a single element). The two bars leave a clear
+// 3-unit gap between their round caps.
 export function heatIcon(kind, first, second, count, known = true) {
   const on = known && (first || second);
   const label = heatLabel(kind, first, second, count, known);
   const bar = (x1, x2, active) => html`<path d="M${x1} 21H${x2}" class="segment ${known && active ? 'lit' : ''}"/>`;
-  const bars = count === 1 ? bar(3.5, 20.5, on) : [bar(3.5, 10.8, first), bar(13.2, 20.5, second)];
+  const bars = count === 1 ? bar(4.3, 19.7, on) : [bar(4.3, 9.2, first), bar(14.8, 19.7, second)];
   return html`
     <svg class="heat ${kind} ${on ? 'on' : ''}" viewBox="0 0 24 24" role="img" aria-label="${label}">
       <title>${label}</title>
@@ -44,28 +45,25 @@ function heatControl(kind, [first, second], count, known) {
     </button>`;
 }
 
-const timerButton = (timer) => html`
-  <button class="timer entity-button" data-entity="timer" aria-label="${timer.label}. Open timer details"
-          title="${timer.label}">
-    ${icon('clock')}<span>${timer.remaining} left</span>
-  </button>`;
-
-// One chip for the heat icons, the state and the timer: outlined while idle, lone flame or unknown (icons only), tinted
-// in the colour of what heats. The border stays, transparent, so tinting never changes the chip's size. The state text
-// is the live state only; the configured source is the mode pill. An unknown status keeps a running timer, after the
-// chip.
-function heatStatus(heat, timer) {
-  const timerItem = timer && timerButton(timer);
-  const activity = html`<span class="activity ${heat.heating ? 'heating' : ''}">${heat.activity}</span>`;
+// One chip for the heat icons and the state word: outlined while idle, lone flame or unknown (icons only), a slight red
+// while heating. The border stays, transparent, so tinting never changes the chip's size. The word, after a divider, is
+// Heating or Idle; a lone flame has none, its half-lit icon says it, and the footer drops the word whole when it does not
+// fit (see layout-fit.js). The chip's label carries the full state for screen readers, so the word itself is hidden from
+// them. The configured source is the mode pill.
+function heatStatus(heat) {
+  const label = heat.known ? html` role="group" aria-label="${heat.activity}"` : '';
+  const word =
+    heat.known &&
+    heat.word &&
+    html`<span class="state-text" aria-hidden="true"><span class="activity ${heat.heating ? 'heating' : ''}">${heat.word}</span></span>`;
   return html`
-    <div class="heat-status${heat.tint ? ` tint-${heat.tint}` : ''}">
+    <div class="heat-status${heat.tinted ? ' tint-heating' : ''}"${label}>
       <div class="sources">
         ${heatControl('gas', heat.burners, 2, heat.known)}
         ${heatControl('electric', heat.elements, heat.elementCount, heat.known)}
       </div>
-      ${heat.known && html`<span class="state-text">${activity}${timerItem}</span>`}
-    </div>
-    ${!heat.known && timerItem}`;
+      ${word}
+    </div>`;
 }
 
 const modeGlyph = (kind, allowed) => html`
@@ -126,7 +124,7 @@ export function footer(view) {
   }
   return html`
     <div class="footer">
-      <div class="start">${heatStatus(view.heat, view.timer)}${modePill(view.mode)}</div>
+      <div class="start">${heatStatus(view.heat)}${modePill(view.mode)}</div>
       ${connectivityItems(view.link)}
     </div>`;
 }

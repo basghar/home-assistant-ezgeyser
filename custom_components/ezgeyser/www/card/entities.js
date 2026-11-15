@@ -14,14 +14,13 @@ export const FIELDS = {
   boost: 'heating_boost_mode',
   vacation: 'heating_vacation_mode',
   next_event: 'next_scheduled_event',
-  timer: 'timer_remaining',
   wifi: 'network_wifi_signal',
   cloud: 'network_cloud_connection',
   clock: 'device_clock',
 };
 
 // Added after the first releases: a card keeps working while these are missing; a missing one hides its item.
-export const OPTIONAL = new Set(['next_event', 'vacation', 'timer', 'wifi', 'cloud', 'clock']);
+export const OPTIONAL = new Set(['next_event', 'vacation', 'wifi', 'cloud', 'clock']);
 
 export const BINARY = new Set([
   'top_ok',

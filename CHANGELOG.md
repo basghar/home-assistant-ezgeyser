@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Card: the footer says the state only. The status chip no longer shows the timer (**Timer remaining** is unchanged),
+  shows **Heating** or **Idle** only while it fits on the line, leaving it out whole rather than shortened, and shows
+  no word for a lone flame, which the half-lit flame already says; screen readers still hear the full state. The chip
+  is a slight red while heating, gas or electric, and taller, with larger heat icons, matching the Android app.
+- Card: the footer is centred between the divider and the card's bottom edge, the mode pill matches the taller chip,
+  the two bars under each heat icon have a clear gap, the Wi-Fi, cloud and clock icons are larger, and the title-row
+  actions slightly smaller. Cards narrower than about 255 px now wrap the footer, and narrower than about 170 px the
+  mode pill too.
+- Update the README screenshots and their descriptions.
+
 ## 0.6.9 (2026-11-15)
 
 - **Network Wi-Fi signal** gains a fifth level: **Weak** is now -71 to -80 dBm and **Very weak** (`very_weak`) -81 dBm

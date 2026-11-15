@@ -1,7 +1,7 @@
 // The worst case the stacking and footer rules measure (see layout-fit.js), with the card's own classes, in a hidden
 // element: the widest reading and second line on the left; the target, an event a week ahead and two icon-only mode chips
-// on the right; and the widest footer line once every step applies: both heat icons, an empty state text and the timer
-// icon in the status chip, an Unknown mode pill, then Wi-Fi, cloud and clock.
+// on the right; and the widest footer line once every step applies: the status chip with its heat icons alone (its word
+// goes whole), an Unknown mode pill without its word, then Wi-Fi, cloud and clock.
 import { html } from '../html.js';
 import { icon, wifiIcon } from '../icons.js';
 
@@ -25,7 +25,6 @@ export const SAMPLE = html`
     <div class="start">
       <div class="heat-status">
         <div class="sources"><div class="heat-control"></div><div class="heat-control"></div></div>
-        <span class="state-text"><span class="activity"></span><span class="timer">${icon('clock')}</span></span>
       </div>
       <span class="mode"><span class="quiet">Unknown</span></span>
     </div>
