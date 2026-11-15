@@ -71,7 +71,7 @@ const WIFI_ARCS = [
 ];
 
 // The dot and every arc are always drawn: the lit ones in the item's colour, the rest in the inactive-arc token. Weak
-// lights the dot alone, in the warning colour, so it still reads as Wi-Fi.
+// and Very weak light the dot alone (Very weak in the warning colour), so it still reads as Wi-Fi.
 export function wifiIcon(level) {
   const lit = WIFI[level]?.arcs ?? 0;
   const arcs = WIFI_ARCS.map((d, i) => html`<path d="${d}" stroke="${i < lit ? 'currentColor' : 'var(--wifi-off)'}"/>`);

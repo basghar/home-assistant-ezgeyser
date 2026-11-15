@@ -812,11 +812,13 @@ test('the badge covers sensors and connectivity: All OK, one problem named, seve
     /<div class="badge " role="img" aria-label="All OK" title="All OK">.*M5 12l5 5L20 7.*<span>All OK<\/span>/,
   );
   assert.match(
-    t.update({ wifi: 'weak' }),
+    t.update({ wifi: 'very_weak' }),
     /class="badge warning" role="img" aria-label="Weak Wi-Fi".*<span>Weak Wi-Fi<\/span>/,
   );
+  // Weak still works for a geyser's little traffic: no issue.
+  assert.match(t.update({ wifi: 'weak' }), /<span>All OK<\/span>/);
   assert.match(t.update({ wifi: 'good', clock: 'on' }), /<span>Clock off<\/span>/);
-  const html = t.update({ top_ok: 'off', top: 'unknown', wifi: 'weak', cloud: 'off', clock: 'off' });
+  const html = t.update({ top_ok: 'off', top: 'unknown', wifi: 'very_weak', cloud: 'off', clock: 'off' });
   assert.match(html, /aria-label="3 issues: Top sensor fault, Weak Wi-Fi, Cloud offline".*<span>3 issues<\/span>/);
   assert.match(
     t.update({ bottom_ok: 'off', bottom: 'unknown', clock: 'on' }),
@@ -833,10 +835,14 @@ test('the footer end: icon-only Wi-Fi, cloud and a clock warning, each its own b
     /<div class="status" role="group" aria-label="Wi-Fi Good, cloud online"><button class="wifi entity-button " data-entity="wifi" aria-label="Wi-Fi Good. Open Wi-Fi signal details" title="Wi-Fi Good"><svg class="icon wifi-icon"[^]*?<\/svg><\/button><button class="cloud entity-button " data-entity="cloud" aria-label="Cloud online. Open cloud connection details"/,
   );
   assert.doesNotMatch(html, /data-entity="clock"/);
-  html = t.update({ wifi: 'weak', cloud: 'off', clock: 'on' });
-  assert.match(html, /role="group" aria-label="Wi-Fi Weak, cloud offline, clock off"/);
+  html = t.update({ wifi: 'very_weak', cloud: 'off', clock: 'on' });
+  assert.match(html, /role="group" aria-label="Wi-Fi Very weak, cloud offline, clock off"/);
   assert.match(html, /class="wifi entity-button warn"[^>]*><svg class="icon wifi-icon"[^]*?<\/svg><\/button>/);
-  assert.doesNotMatch(html, /<span>(Excellent|Good|Fair|Weak)<\/span>/);
+  assert.doesNotMatch(html, /<span>(Excellent|Good|Fair|Weak|Very weak)<\/span>/);
+  assert.match(
+    t.update({ wifi: 'weak' }),
+    /aria-label="Wi-Fi Weak, cloud offline, clock off"[^]*?class="wifi entity-button "/,
+  );
   assert.match(
     html,
     /class="cloud entity-button warn" data-entity="cloud" aria-label="Cloud offline. Open cloud connection details".*M9.58 5.548/,
@@ -854,6 +860,7 @@ test('the Wi-Fi icon always draws the dot and three arcs, lighting 3, 2, 1 or no
     ['good', 2],
     ['fair', 1],
     ['weak', 0],
+    ['very_weak', 0],
   ]) {
     const svg = api.wifiIcon(level);
     assert.match(svg, /<circle cx="12" cy="16.5" r="1.6" fill="currentColor"\/>/);

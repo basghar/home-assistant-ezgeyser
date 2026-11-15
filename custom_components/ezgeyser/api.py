@@ -167,6 +167,8 @@ def parse_quick_status(body: bytes) -> QuickStatus:
     if type(source) is not int:
         raise NotAGeyser("unexpected field: source")
     clock = raw.get("now")
+    # `rssi` is 0 while the station is not connected (api-quickstatus.md): 0 or more is no reading, not full signal.
+    rssi = _optional_integer(raw, "rssi")
     return QuickStatus(
         top=_celsius(raw, "top"),
         top_ok=_flag(raw, "topOk"),
@@ -181,7 +183,7 @@ def parse_quick_status(body: bytes) -> QuickStatus:
         boost=_flag(raw, "boostMode"),
         vacation=_flag(raw, "vacationMode"),
         clock=clock if isinstance(clock, int) and not isinstance(clock, bool) else 0,
-        rssi=_optional_integer(raw, "rssi"),
+        rssi=rssi if rssi is not None and rssi < 0 else None,
         cloud=_optional_flag(raw, "mqtt"),
         remaining=_optional_integer(raw, "remaining"),
     )

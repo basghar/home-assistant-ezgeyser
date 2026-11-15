@@ -13,7 +13,8 @@
           "excellent": "mdi:wifi-strength-4",
           "good": "mdi:wifi-strength-3",
           "fair": "mdi:wifi-strength-2",
-          "weak": "mdi:wifi-strength-1-alert"
+          "weak": "mdi:wifi-strength-1",
+          "very_weak": "mdi:wifi-strength-1-alert"
         }
       },
       "timer_remaining": {

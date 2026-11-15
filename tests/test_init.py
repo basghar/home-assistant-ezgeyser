@@ -312,7 +312,7 @@ async def test_next_event_attributes_carry_the_schedule_settings(
 @pytest.mark.parametrize(
     ("rssi", "level"),
     [(-30, "excellent"), (-50, "excellent"), (-51, "good"), (-60, "good"), (-61, "fair"), (-70, "fair"),
-     (-71, "weak"), (-90, "weak"), (None, None)],
+     (-71, "weak"), (-80, "weak"), (-81, "very_weak"), (-95, "very_weak"), (None, None)],
 )  # fmt: skip
 def test_wifi_level_uses_the_android_bands(rssi: int | None, level: str | None) -> None:
     assert wifi_level(rssi) == level
@@ -323,7 +323,7 @@ async def test_wifi_cloud_and_timer_follow_the_status_and_are_unknown_when_left_
 ) -> None:
     await _setup(hass, entry)
     signal = hass.states.get("sensor.kitchen_network_wi_fi_signal")
-    assert signal.attributes["options"] == ["excellent", "good", "fair", "weak"]
+    assert signal.attributes["options"] == ["excellent", "good", "fair", "weak", "very_weak"]
     assert "rssi" not in signal.attributes
     timer = hass.states.get("sensor.kitchen_timer_remaining")
     assert ("unit_of_measurement" not in timer.attributes, "state_class" not in timer.attributes) == (True, True)
@@ -384,6 +384,12 @@ async def test_an_enabled_wifi_rssi_is_rounded_without_raw_attributes(
     _answer(geyser, _status(rssi=-62))
     await _tick(hass, freezer)
     assert hass.states.get("sensor.kitchen_wifi_rssi").state == "-60"
+
+    # 0 dBm means the station is not connected: no reading, not an excellent signal.
+    _answer(geyser, _status(rssi=0))
+    await _tick(hass, freezer)
+    assert hass.states.get("sensor.kitchen_wifi_rssi").state == STATE_UNKNOWN
+    assert hass.states.get("sensor.kitchen_network_wi_fi_signal").state == STATE_UNKNOWN
 
 
 async def test_device_clock_is_a_problem_more_than_two_minutes_from_home_assistant(

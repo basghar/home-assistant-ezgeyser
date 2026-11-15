@@ -6,6 +6,7 @@ export const WIFI = {
   good: { label: 'Good', arcs: 2 },
   fair: { label: 'Fair', arcs: 1 },
   weak: { label: 'Weak', arcs: 0 },
+  very_weak: { label: 'Very weak', arcs: 0 },
 };
 
 // What the badge and the footer's end say about the connection: a missing or unknown entity is neither shown nor an issue.
@@ -23,7 +24,7 @@ export function problems(shown, link) {
   return [
     fault('top') && 'Top sensor fault',
     fault('bottom') && 'Bottom sensor fault',
-    link.level === 'weak' && 'Weak Wi-Fi',
+    link.level === 'very_weak' && 'Weak Wi-Fi',
     link.cloud === false && 'Cloud offline',
     link.clockOff && 'Clock off',
   ].filter(Boolean);
@@ -34,7 +35,7 @@ export function badgeText(issues) {
   return issues[0]?.replace(/ fault$/, '') || 'All OK';
 }
 
-// The footer's end group as one sentence: "Wi-Fi Weak, cloud offline, clock off".
+// The footer's end group as one sentence: "Wi-Fi Very weak, cloud offline, clock off".
 export function linkLabel(link) {
   const text = [
     link.level && `Wi-Fi ${WIFI[link.level].label}`,

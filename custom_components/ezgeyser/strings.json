@@ -100,7 +100,8 @@
           "excellent": "Excellent",
           "good": "Good",
           "fair": "Fair",
-          "weak": "Weak"
+          "weak": "Weak",
+          "very_weak": "Very weak"
         }
       },
       "network_wifi_rssi": {

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Network Wi-Fi signal** gains a fifth level: **Weak** is now -71 to -80 dBm and **Very weak** (`very_weak`) -81 dBm
+  or less, the same in the Android app. A geyser sends so little that a weak signal still works, so the card's
+  **Weak Wi-Fi** issue and amber Wi-Fi icon now mean Very weak only; Weak shows the dot alone, uncoloured.
+- An `rssi` of 0, which the geyser sends while not connected, is now no reading: both Wi-Fi sensors are unknown instead
+  of Excellent and 0 dBm.
+
 ## 0.6.8 (2026-11-13)
 
 - Card: each tank half is coloured by its own sensor's reading, from blue for cold water (15 °C and below) through

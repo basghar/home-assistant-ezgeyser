@@ -6,7 +6,7 @@ The tank temperatures are smoothed (see `smoothing.py`); the raw readings are se
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, override
+from typing import Any, Final, override
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -34,14 +34,26 @@ NEXT_EVENT_ATTRIBUTES = ("target_temperature", "heating_off", "source", "source_
 # The schedule's weekday flags, Sunday first: the order the Android app assumes, not yet verified on a device.
 WEEKDAYS = ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
 SOURCE_OPTIONS = ["gas", "electric", "hybrid", "unknown"]
-WIFI_LEVELS = ["excellent", "good", "fair", "weak"]
+WIFI_LEVELS = ["excellent", "good", "fair", "weak", "very_weak"]
+# dBm; the weakest reading of each level, as in the Android app. Anything below `WIFI_WEAK` is very weak, the only level
+# the card warns about: a geyser sends so little that weak still works.
+WIFI_EXCELLENT: Final = -50
+WIFI_GOOD: Final = -60
+WIFI_FAIR: Final = -70
+WIFI_WEAK: Final = -80
 
 
 def wifi_level(rssi: int | None) -> str | None:
-    """The Android app's four levels: -50 dBm or more excellent, -51 to -60 good, -61 to -70 fair, -71 or less weak."""
+    """-50 dBm or more excellent, -51 to -60 good, -61 to -70 fair, -71 to -80 weak, -81 or less very weak."""
     if rssi is None:
         return None
-    return "excellent" if rssi >= -50 else "good" if rssi >= -60 else "fair" if rssi >= -70 else "weak"
+    if rssi >= WIFI_EXCELLENT:
+        return "excellent"
+    if rssi >= WIFI_GOOD:
+        return "good"
+    if rssi >= WIFI_FAIR:
+        return "fair"
+    return "weak" if rssi >= WIFI_WEAK else "very_weak"
 
 
 @dataclass(frozen=True, kw_only=True)

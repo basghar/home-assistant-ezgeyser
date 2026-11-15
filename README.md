@@ -94,7 +94,7 @@ For a geyser named **Kitchen**:
 | `binary_sensor.kitchen_heating_vacation_mode` | **Active** / **Inactive**: vacation mode. |
 | `sensor.kitchen_timer_remaining` | Whole minutes left on the running timer (at least 1 while any time is left), shown without a unit. 0 when no timer runs. |
 | `sensor.kitchen_next_scheduled_event` | When the next enabled schedule starts: see [Next scheduled event](#next-scheduled-event). |
-| `sensor.kitchen_network_wi_fi_signal` | **Excellent** (−50 dBm or stronger), **Good** (to −60), **Fair** (to −70) or **Weak**. |
+| `sensor.kitchen_network_wi_fi_signal` | **Excellent** (−50 dBm or stronger), **Good** (to −60), **Fair** (to −70), **Weak** (to −80) or **Very weak**. |
 | `binary_sensor.kitchen_network_cloud_connection` | **Connected** / **Disconnected**: the geyser's link to the ezGeyser cloud, which the official app uses. |
 | `binary_sensor.kitchen_device_clock` | **Problem** / **OK**: whether the geyser's clock is off; see [Next scheduled event](#next-scheduled-event). |
 | `sensor.kitchen_temperature_top_raw` | Disabled by default. The top sensor's reading every second, unsmoothed. |
@@ -102,9 +102,9 @@ For a geyser named **Kitchen**:
 | `sensor.kitchen_network_wi_fi_rssi` | Disabled by default. The Wi-Fi signal rounded to 5 dBm steps; see [Wi-Fi history](#wi-fi-history). |
 
 The labels are for display. In automations and templates, binary sensors are `on` (the first label) or `off`, the
-heating source is `gas`, `electric`, `hybrid` or `unknown`, and the Wi-Fi signal is `excellent`, `good`, `fair` or
-`weak`. The geyser codes Gas as 1, Electric as 2 and Hybrid as 3, but this version names only code 1: any other code
-shows as Unknown, and its raw value is in the `source_code` attribute.
+heating source is `gas`, `electric`, `hybrid` or `unknown`, and the Wi-Fi signal is `excellent`, `good`, `fair`,
+`weak` or `very_weak`. The geyser codes Gas as 1, Electric as 2 and Hybrid as 3, but this version names only code 1:
+any other code shows as Unknown, and its raw value is in the `source_code` attribute.
 
 The `temperature_`, `heating_`, `timer_`, `network_` and `device_` parts group the entities by kind. If you rename the
 device later (**Settings > Devices**), Home Assistant offers to rename its entity IDs to match.
@@ -161,7 +161,8 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   1 °C shows. The colours are a guide; the numbers are the reading. A grey hatched half and an amber dash mean that sensor
   reports a fault.
 - **Badge:** **All OK**, the one problem by name (**Top sensor**, **Bottom sensor**, **Weak Wi-Fi**, **Cloud
-  offline** or **Clock off**), or how many there are, such as **3 issues**; its tooltip lists them.
+  offline** or **Clock off**), or how many there are, such as **3 issues**; its tooltip lists them. **Weak Wi-Fi**
+  means the Very weak level: a geyser sends so little that Weak still works.
 - **Right column:** the target beside a thermometer, or **Target not set** (target 0) or **Target unknown**; then the
   next scheduled event: its time, **+1** when it is tomorrow (**+2** and so on), and the temperature it sets, or
   **Off**. Select it for its [details](#next-scheduled-event). **Boost** and **Vacation** appear as pills while on.
@@ -249,14 +250,15 @@ the scatter, and the shown value changes only once that average moves 0.2 °C. T
 
 ### Wi-Fi history
 
-**Network Wi-Fi signal**, used by the card, stores only the level (`excellent`, `good`, `fair` or `weak`), with no
-numerical RSSI attribute. It changes only when the signal crosses one of the level thresholds.
+**Network Wi-Fi signal**, used by the card, stores only the level, with no numerical RSSI attribute. It changes only
+when the signal crosses one of the level thresholds. Both Wi-Fi sensors are unknown while the geyser sends no reading,
+including the 0 dBm it reports while not connected.
 
 The separate **Network Wi-Fi RSSI** sensor is disabled by default. If enabled, its value is rounded to 5 dBm steps
 (for example, −64 dBm becomes −65 dBm). A 1 dBm buffer beyond each rounding midpoint prevents small fluctuations
 from flipping between adjacent steps: a value of −65 stays there through −62, then changes to −60 at −61. These
-rounded values are what history records. A missing reading becomes unknown immediately, and after 30 seconds without
-a reading the rounding starts over. The level sensor still uses the original signal thresholds.
+rounded values are what history records. After 30 seconds without a reading, the rounding starts over. The level
+sensor still uses the original signal thresholds.
 
 ### Next scheduled event
 

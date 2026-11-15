@@ -47,6 +47,11 @@ def test_parse_quick_status_without_the_optional_fields_reads_the_rest() -> None
     assert status.top == 43.1
 
 
+@pytest.mark.parametrize("rssi", [0, 5])
+def test_parse_quick_status_reads_a_non_negative_rssi_as_no_reading(rssi: int) -> None:
+    assert parse_quick_status(_with(QUICK_STATUS, rssi=rssi)).rssi is None
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

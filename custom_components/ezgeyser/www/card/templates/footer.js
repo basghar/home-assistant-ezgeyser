@@ -100,7 +100,7 @@ function connectivityItems(link) {
   const items = [];
   if (link.level) {
     const label = `Wi-Fi ${WIFI[link.level].label}`;
-    items.push(connectivityItem('wifi', label, 'Wi-Fi signal', wifiIcon(link.level), link.level === 'weak'));
+    items.push(connectivityItem('wifi', label, 'Wi-Fi signal', wifiIcon(link.level), link.level === 'very_weak'));
   }
   if (link.cloud !== null) {
     const label = `Cloud ${link.cloud ? 'online' : 'offline'}`;
