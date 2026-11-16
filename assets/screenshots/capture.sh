@@ -8,12 +8,12 @@ chrome=${CHROME:-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}
 url="file://$PWD/harness.html"
 # The card is ES modules, which Chrome only loads from file:// pages with this flag.
 flags="--headless=new --lang=en-US --allow-file-access-from-files"
-# The stress scenes check that the widest values still fit, the chip-states scenes every status chip state, and the
-# footer-check scene every footer layout; they go to check/ (gitignored), not the README. The harness checks each scene's
-# layout and titles it FAIL with the problems, which stops this script.
+# The stress scenes check that the widest values still fit, the chip-states scenes every status chip state, the
+# footer-check scene every footer layout, and the modes scenes every heating mode; they go to check/ (gitignored), not
+# the README. The harness checks each scene's layout and titles it FAIL with the problems, which stops this script.
 mkdir -p check
-for scene in dashboard-light dashboard-dark idle gas-heating electric-heating sensor-fault unreachable narrow details stress stress-dark chip-states chip-states-dark footer-check; do
-  case $scene in stress*|chip-states*|footer-check) out="check/$scene.png" ;; *) out="$scene.png" ;; esac
+for scene in dashboard-light dashboard-dark idle gas-heating electric-heating sensor-fault unreachable narrow details stress stress-dark chip-states chip-states-dark footer-check modes modes-dark; do
+  case $scene in stress*|chip-states*|footer-check|modes*) out="check/$scene.png" ;; *) out="$scene.png" ;; esac
   # Checked at 1x and at the screenshots' 2x, where the thin borders are half as wide.
   for scale in 1 2; do
     title=$("$chrome" $flags --force-device-scale-factor=$scale --virtual-time-budget=3000 \

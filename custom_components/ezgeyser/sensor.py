@@ -26,11 +26,30 @@ from .entity import EzGeyserEntity
 
 PARALLEL_UPDATES = 0
 
-# `source` codes confirmed on a device. Electric and Hybrid are options already, but their codes have not been observed
-# yet, so every code but 1 shows as unknown, with the raw code in the `source_code` attribute.
-SOURCE_CODES: dict[int, str] = {1: "gas"}
+# `source` codes, read from the geyser's firmware as in the Android app: hybrid runs gas and electric together. Any
+# other code shows as unknown, with the raw code in the `source_code` attribute.
+SOURCE_CODES: dict[int, str] = {1: "gas", 2: "electric", 3: "hybrid"}
+# A schedule's source and switch-over as the one choice they are, the Android app's heating modes. With switch-over, gas
+# moves to electric while ignition fails and electric to gas during a power cut; hybrid already runs both, so the
+# firmware ignores its switch-over. An unlisted switch-over reads as off, the firmware's default.
+HEATING_MODES: dict[tuple[str, bool], str] = {
+    ("gas", False): "gas_only",
+    ("gas", True): "gas_backup",
+    ("electric", False): "electric_only",
+    ("electric", True): "electric_backup",
+    ("hybrid", False): "hybrid",
+    ("hybrid", True): "hybrid",
+}
 
-NEXT_EVENT_ATTRIBUTES = ("target_temperature", "heating_off", "source", "source_code", "switch_over", "repeat_days")
+NEXT_EVENT_ATTRIBUTES = (
+    "target_temperature",
+    "heating_off",
+    "heating_mode",
+    "source",
+    "source_code",
+    "switch_over",
+    "repeat_days",
+)
 # The schedule's weekday flags, Sunday first: the order the Android app assumes, not yet verified on a device.
 WEEKDAYS = ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
 SOURCE_OPTIONS = ["gas", "electric", "hybrid", "unknown"]
@@ -41,6 +60,16 @@ WIFI_EXCELLENT: Final = -50
 WIFI_GOOD: Final = -60
 WIFI_FAIR: Final = -70
 WIFI_WEAK: Final = -80
+
+
+def heating_mode(source_code: int | None, switch_over: bool | None) -> str | None:
+    """The heating mode a configured source and switch-over select; None for a missing or unknown source code.
+
+    Only for configured pairs, such as a schedule's: the live source is the one in use, which switch-over may have
+    replaced, so the heating source sensor has no mode.
+    """
+    source = SOURCE_CODES.get(source_code) if source_code is not None else None
+    return HEATING_MODES.get((source, switch_over is True)) if source else None
 
 
 def wifi_level(rssi: int | None) -> str | None:
@@ -158,8 +187,8 @@ class NextEventSensor(EzGeyserEntity, SensorEntity):
         """The next event's settings, for the card's details and for automations.
 
         `target_temperature` is in Home Assistant's temperature unit and None when the event turns heating off
-        (`heating_off`) or names no target. `repeat_days` lists the days the entry runs on; its Sunday-first order is
-        unverified.
+        (`heating_off`) or names no target. `heating_mode` is `source` and `switch_over` as one choice. `repeat_days`
+        lists the days the entry runs on; its Sunday-first order is unverified.
         """
         event = self.coordinator.next_event
         if event is None:
@@ -174,6 +203,7 @@ class NextEventSensor(EzGeyserEntity, SensorEntity):
         return {
             "target_temperature": target,
             "heating_off": heating_off,
+            "heating_mode": heating_mode(event.source_code, event.switch_over),
             "source": source,
             "source_code": event.source_code,
             "switch_over": event.switch_over,

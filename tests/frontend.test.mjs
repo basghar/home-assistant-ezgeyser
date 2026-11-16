@@ -225,6 +225,7 @@ test('all flame and element combinations distinguish heating, lone flame and idl
 const EVENT = {
   target_temperature: 60,
   heating_off: false,
+  heating_mode: 'gas_only',
   source: 'gas',
   source_code: 1,
   switch_over: false,
@@ -243,7 +244,7 @@ test('right column: the target, the next event with a +1 badge, then the modes m
     /6:00 AM<\/span><span class="day-badge" aria-hidden="true">\+1<\/span><span class="quiet" aria-hidden="true">→<\/span><span class="value" aria-hidden="true">60°/,
   );
   assert.match(html, /aria-label="Next scheduled event tomorrow at 6:00 AM, target 60 degrees"/);
-  assert.match(html, /title="Tomorrow 6:00 AM: 60 °C, Gas, switch-over off"/);
+  assert.match(html, /title="Tomorrow 6:00 AM: 60 °C, Gas only"/);
   assert.ok(html.indexOf('Target') < html.indexOf('6:00 AM'));
   const right = html.slice(html.indexOf('class="right"'), html.indexOf('class="footer"'));
   assert.match(
@@ -291,14 +292,21 @@ test('today has no badge; days further ahead count up, in the server or browser 
 });
 test('the event line opens a details window with every setting, and History opens more-info', () => {
   const t = setup();
-  t.update({ next_event: tomorrowAtSix() }, { ...EVENT, switch_over: true, source: 'unknown', source_code: 3 });
+  t.update(
+    { next_event: tomorrowAtSix() },
+    { ...EVENT, heating_mode: null, switch_over: true, source: 'unknown', source_code: 7 },
+  );
   t.card.card.click({ target: { closest: (selector) => (selector === '[data-action="schedule"]' ? {} : null) } });
   const dialog = t.card.dialog;
   assert.equal(dialog.open, true);
   assert.match(dialog.innerHTML, /Tomorrow · .* · 6:00 AM/);
   assert.match(dialog.innerHTML, /<dt>Target<\/dt><dd>60 °C<\/dd>/);
-  assert.match(dialog.innerHTML, /<dd>Source 3 \(unverified\)<\/dd>/);
-  assert.match(dialog.innerHTML, /<dt>Switch-over<\/dt><dd>On, gas to electric<\/dd>/);
+  // A source the integration cannot name is no mode: its code, with no glyph.
+  assert.match(
+    dialog.innerHTML,
+    /<div class="row"><dt>Heating mode<\/dt><dd>Source code 7 \(unverified\)<\/dd><\/div>/,
+  );
+  assert.doesNotMatch(dialog.innerHTML, /heat-mode|Switch-over|Heat source/);
   assert.match(dialog.innerHTML, /<dt>Repeats<\/dt><dd>Every day<\/dd>/);
   dialog.on.click({
     target: { closest: (selector) => (selector === '[data-entity]' ? { dataset: { entity: 'next_event' } } : null) },
@@ -313,6 +321,57 @@ test('the event line opens a details window with every setting, and History open
   t.update({ top: 'unavailable' });
   assert.equal(dialog.open, false);
 });
+test('the details window shows the heating mode as its glyph and name, then what it does', () => {
+  const t = setup();
+  const open = (attributes) => {
+    t.update({ next_event: tomorrowAtSix() }, { ...EVENT, ...attributes });
+    t.card._openDetails();
+    return t.card.dialog.innerHTML.match(/<div class="row mode-row">[^]*?<\/div>/)?.[0];
+  };
+  // Each glyph part: a source in its hue, unused, or as a backup, or a join.
+  const parts = (row) => [...row.matchAll(/<svg class="([^"]*)"/g)].map((m) => m[1].trim());
+  // prettier-ignore
+  const cases = [
+    ['gas_only', 1, false, ['gas', 'electric unused'], 'Gas only', 'Gas only', 'Heats with gas. Nothing heats while gas is out.'],
+    ['gas_backup', 1, true, ['gas', 'join', 'electric backup'], 'Gas + backup', 'Gas with electric backup',
+      'Heats with gas. Electric takes over while gas fails, if mains is on.'],
+    ['electric_only', 2, false, ['gas unused', 'electric'], 'Electric only', 'Electric only',
+      'Heats with electric. Nothing heats during a power cut.'],
+    ['electric_backup', 2, true, ['electric', 'join', 'gas backup'], 'Electric + backup', 'Electric with gas backup',
+      'Heats with electric. Gas takes over during a power cut.'],
+    ['hybrid', 3, false, ['gas', 'join', 'electric'], 'Both together', 'Both together, gas and electric',
+      'Gas and electric heat together. Either carries on if the other is out.'],
+  ];
+  for (const [mode, code, switchOver, glyph, name, spoken, about] of cases) {
+    const row = open({ heating_mode: mode, source_code: code, switch_over: switchOver });
+    assert.ok(row, mode);
+    assert.deepEqual(parts(row), glyph, mode);
+    assert.ok(
+      row.includes(`<dt>Heating mode</dt><dd><span class="heat-mode" role="img" aria-label="${spoken}">`),
+      mode,
+    );
+    assert.ok(row.includes(`<span aria-hidden="true">${name}</span></dd><dd class="hint">${about}</dd>`), mode);
+    assert.ok(t.html().includes(`title="Tomorrow 6:00 AM: 60 °C, ${name}"`), mode);
+  }
+  // The backup arrow and the hybrid plus.
+  assert.match(open({ heating_mode: 'gas_backup', switch_over: true }), /M5 12h14M13 18l6-6M13 6l6 6/);
+  assert.match(open({ heating_mode: 'hybrid', source_code: 3 }), /M12 6v12M6 12h12/);
+  // A schedule that leaves switch-over out reads as the "only" mode, and says the backup stays as it was; hybrid has no
+  // backup to keep.
+  const unlisted = '<dd class="hint">This entry doesn&#39;t set switch-over, so the backup stays as it was.</dd>';
+  assert.ok(open({ heating_mode: 'gas_only', switch_over: null }).includes(unlisted));
+  assert.ok(open({ heating_mode: 'electric_only', source_code: 2, switch_over: null }).includes(unlisted));
+  assert.ok(!open({ heating_mode: 'hybrid', source_code: 3, switch_over: null }).includes(unlisted));
+  // The glyph takes the dashboard's gas and electric hues; a backup is half strength, an unused source mode-off grey.
+  assert.match(t.api.STYLE, /\.heat-mode \.gas\{stroke:var\(--gas\)\}/);
+  assert.match(t.api.STYLE, /\.heat-mode \.electric\{stroke:var\(--electric\)\}/);
+  assert.match(t.api.STYLE, /\.heat-mode \.backup\{opacity:\.5\}/);
+  assert.match(t.api.STYLE, /\.heat-mode \.unused\{stroke:var\(--mode-off\)\}/);
+  // Without a mode, a source the integration names still reads by name.
+  t.update({ next_event: tomorrowAtSix() }, { ...EVENT, heating_mode: undefined });
+  t.card._openDetails();
+  assert.match(t.card.dialog.innerHTML, /<dt>Heating mode<\/dt><dd>Gas<\/dd>/);
+});
 test('the heat-source rows can be turned off for a single-source geyser', () => {
   const t = setup({ show_heat_source: false });
   assert.match(
@@ -320,7 +379,7 @@ test('the heat-source rows can be turned off for a single-source geyser', () => 
     /title="Tomorrow 6:00 AM: heating off"/,
   );
   t.card._openDetails();
-  assert.doesNotMatch(t.card.dialog.innerHTML, /Heat source|Switch-over/);
+  assert.doesNotMatch(t.card.dialog.innerHTML, /Heating mode|heat-mode/);
   assert.match(t.card.dialog.innerHTML, /<dd>Heating off<\/dd>/);
   assert.throws(() => setup({ show_heat_source: 'no' }));
   assert.equal(setup().api.EzGeyserCard.getConfigForm().schema.at(-1).name, 'show_heat_source');
@@ -450,14 +509,15 @@ test('the mode pill: the word, a divider, then flame and bolt, allowed or not, w
   );
   assert.deepEqual(icons(html), ['mode-icon allowed', 'mode-icon']);
   assert.ok(pill(html).indexOf('M12 10.941c') < pill(html).indexOf('M13.6 2 5'));
-  assert.doesNotMatch(pill(html), /Gas only|Hybrid|Electric/);
+  assert.doesNotMatch(pill(html), /Gas only|Both together|Electric/);
   html = t.update({ source: 'hybrid' });
   assert.match(
     pill(html),
-    /aria-label="Mode: gas, with electric fallback. Open heating source details" title="Mode: gas, with electric fallback"/,
+    /aria-label="Mode: both together, gas and electric. Open heating source details" title="Mode: both together, gas and electric"/,
   );
-  assert.deepEqual(icons(html), ['mode-icon allowed', 'mode-arrow', 'mode-icon allowed']);
-  assert.match(pill(html), /M5 12h14M13 18l6-6M13 6l6 6/);
+  // The live source is never a mode: hybrid is both icons, with no backup arrow.
+  assert.deepEqual(icons(html), ['mode-icon allowed', 'mode-icon allowed']);
+  assert.doesNotMatch(pill(html), /M5 12h14M13 18l6-6M13 6l6 6|mode-arrow/);
   html = t.update({ source: 'electric' });
   assert.match(pill(html), /title="Mode: electric only"/);
   assert.deepEqual(icons(html), ['mode-icon', 'mode-icon allowed']);

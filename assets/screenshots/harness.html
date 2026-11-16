@@ -15,6 +15,9 @@
 <div id="stage"></div>
 <script type="module">
 import { FIELDS } from '../../custom_components/ezgeyser/www/card/entities.js';
+import { scheduleView } from '../../custom_components/ezgeyser/www/card/schedule.js';
+import { STYLE } from '../../custom_components/ezgeyser/www/card/styles.js';
+import { details } from '../../custom_components/ezgeyser/www/card/templates/details.js';
 
 // Every reading below is made up. Heating states have not been captured from a real geyser. Event times are local
 // (capture.sh renders in Asia/Karachi) and relative to today, so "+1" stays right whenever this runs. The dashboard
@@ -26,13 +29,13 @@ function at(days, hours, minutes = 0) {
 }
 const EVERY_DAY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 const WEEKDAYS = ['monday','tuesday','wednesday','thursday','friday'];
-const event = (target, more = {}) => ({target_temperature:target, heating_off:target === null, source:'gas', source_code:1,
-  switch_over:false, repeat_days:EVERY_DAY, ...more});
+const event = (target, more = {}) => ({target_temperature:target, heating_off:target === null, heating_mode:'gas_only',
+  source:'gas', source_code:1, switch_over:false, repeat_days:EVERY_DAY, ...more});
 // The mockup draws one element bar; a geyser with two elements is the card's default.
 const ONE_ELEMENT = {element_count:1};
 const GEYSERS = {
   upstairs: {name:'Upstairs', values:{top:'39.5', bottom:'35.1', target:'0', next_event:at(0, 21, 30)},
-    event:event(55, {switch_over:true, repeat_days:WEEKDAYS}), config:ONE_ELEMENT},
+    event:event(55, {heating_mode:'gas_backup', switch_over:true, repeat_days:WEEKDAYS}), config:ONE_ELEMENT},
   kitchen: {name:'Kitchen', values:{top:'51.8', bottom:'47.2', target:'55', burner_left:'on', burner_right:'on', boost:'on',
     wifi:'fair', next_event:at(1, 6)}, event:event(55), config:ONE_ELEMENT},
   bathroom: {name:'Ground Floor Bathroom', values:{top:'28.4', bottom:'24.9', target:'0', vacation:'on', wifi:'excellent'},
@@ -48,10 +51,13 @@ const GEYSERS = {
   utility: {name:'Utility Room', values:{top:'47.9', bottom:'44.2', target:'55', source:'hybrid', burner_left:'on',
     element_1:'on', next_event:at(1, 6)}, event:event(55)},
   studio: {name:'Studio', values:{top:'44.6', bottom:'40.3', target:'50', burner_left:'unknown', element_1:'on',
-    source:'unknown', source_code:3, next_event:at(1, 6)}, event:event(50)},
+    source:'unknown', source_code:7, next_event:at(1, 6)}, event:event(50)},
   // The widest footer: Heating, an unknown mode and every end icon.
-  porch: {name:'Porch', values:{top:'49.0', bottom:'45.5', target:'55', source:'unknown', source_code:3, burner_left:'on',
+  porch: {name:'Porch', values:{top:'49.0', bottom:'45.5', target:'55', source:'unknown', source_code:7, burner_left:'on',
     burner_right:'on', wifi:'excellent', cloud:'off', clock:'on', next_event:at(1, 6)}, event:event(55)},
+  // The live Mode pill for electric; the modes scenes show it beside gas, hybrid and unknown.
+  workshop: {name:'Workshop', values:{top:'45.2', bottom:'41.8', target:'50', source:'electric', source_code:2,
+    next_event:at(1, 6)}, event:event(50, {heating_mode:'electric_only', source:'electric', source_code:2})},
   // The longest values the acceptance checks name, at once.
   stress: {name:'Ground Floor Master Bathroom', values:{top:'88.8', bottom:'47.2', target:'72.5', source:'hybrid', source_code:3,
     boost:'on', vacation:'on', wifi:'excellent', cloud:'off', clock:'on', next_event:at(7, 12, 30)}, event:event(72.5)},
@@ -76,10 +82,23 @@ const SCENES = {
   'chip-states-dark': {dark:true, columns:[345,345], cards:['upstairs','kitchen','laundry','utility','roof','studio']},
   // Every footer layout, checked by eye and by checkLayout; not in the README.
   'footer-check': {dark:false, columns:FOOTER_WIDTHS, cards:FOOTER_CARDS.flatMap(id => FOOTER_WIDTHS.map(() => id))},
+  // The live Mode pill for each source, and every heating mode in the details window (SHEETS); not in the README.
+  'modes': {dark:false, columns:[380,380], cards:['kitchen','workshop','utility','studio'], sheets:true},
+  'modes-dark': {dark:true, columns:[380,380], cards:['kitchen','workshop','utility','studio'], sheets:true},
   // One card per row, at the three acceptance widths.
   'stress': {dark:false, widths:[388,336,296], cards:['stress','stress','stress']},
   'stress-dark': {dark:true, widths:[388,336,296], cards:['stress','stress','stress']},
 };
+// The details window's Heating mode row for each mode, a schedule that leaves switch-over out, and an unknown code.
+const SHEETS = [
+  {heating_mode:'gas_only'},
+  {heating_mode:'gas_backup', switch_over:true},
+  {heating_mode:'electric_only', source:'electric', source_code:2},
+  {heating_mode:'electric_backup', source:'electric', source_code:2, switch_over:true},
+  {heating_mode:'hybrid', source:'hybrid', source_code:3},
+  {heating_mode:'gas_only', switch_over:null},
+  {heating_mode:null, source:'unknown', source_code:7, switch_over:true},
+];
 const DEFAULTS = {source:'gas', source_code:1, top_ok:'on', bottom_ok:'on', burner_left:'off', burner_right:'off',
   element_1:'off', element_2:'off', boost:'off', vacation:'off', next_event:'unknown', wifi:'good', cloud:'on',
   clock:'off'};
@@ -150,6 +169,17 @@ async function main() {
     card.hass = hass;
     return [id, card];
   });
+  if (scene.sheets) {
+    // The window's own markup and styles, in place rather than modal, so every mode shows at once.
+    for (const more of SHEETS) {
+      const host = document.createElement('div');
+      host.toggleAttribute('dark', scene.dark);
+      const sheet = details(scheduleView({state:at(1, 6), attributes:event(55, more)}, hass), true);
+      host.attachShadow({mode:'open'}).innerHTML =
+        `<style>${STYLE}</style><dialog class="details" open style="position:static;max-height:none">${sheet}</dialog>`;
+      stage.append(host);
+    }
+  }
   await document.fonts.ready;
   await new Promise(resolve => setTimeout(resolve, 100));
   // An unreachable card first sees good readings, then keeps them as last known values.

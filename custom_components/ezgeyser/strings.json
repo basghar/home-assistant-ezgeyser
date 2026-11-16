@@ -85,7 +85,7 @@
         "state": {
           "gas": "Gas",
           "electric": "Electric",
-          "hybrid": "Hybrid",
+          "hybrid": "Both together",
           "unknown": "Unknown"
         },
         "state_attributes": {
@@ -123,10 +123,22 @@
               "false": "No"
             }
           },
+          "heating_mode": {
+            "name": "Heating mode",
+            "state": {
+              "gas_only": "Gas only",
+              "gas_backup": "Gas + backup",
+              "electric_only": "Electric only",
+              "electric_backup": "Electric + backup",
+              "hybrid": "Both together"
+            }
+          },
           "source": {
             "name": "Heat source",
             "state": {
               "gas": "Gas",
+              "electric": "Electric",
+              "hybrid": "Both together",
               "unknown": "Unknown"
             }
           },
@@ -134,7 +146,7 @@
             "name": "Heat source code"
           },
           "switch_over": {
-            "name": "Switch-over to electric",
+            "name": "Switch-over",
             "state": {
               "true": "On",
               "false": "Off"

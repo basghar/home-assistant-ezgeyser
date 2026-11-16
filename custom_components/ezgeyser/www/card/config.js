@@ -35,7 +35,7 @@ const LABELS = {
   main: 'Main temperature',
   element_count: 'Electric elements',
   theme: 'Theme',
-  show_heat_source: 'Show heat source and switch-over in schedule details',
+  show_heat_source: 'Show heating mode in schedule details',
 };
 
 export const configForm = () => ({

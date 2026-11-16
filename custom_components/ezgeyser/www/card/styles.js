@@ -471,16 +471,6 @@ ha-card, .sample {
 .mode-icon.allowed {
   stroke: var(--text);
 }
-.mode-arrow {
-  width: 10.5px;
-  height: 10.5px;
-  flex: none;
-  fill: none;
-  stroke: var(--tertiary);
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 
 /* Heat status chip: outlined while idle, a slight red while heating, gas or electric (the lit icons tell them apart).
    The heat icons have room above and below in the taller pill. */
@@ -693,6 +683,56 @@ dialog.details::backdrop {
   margin: 0;
   font-weight: 500;
   text-align: right;
+}
+
+/* The heating mode row: the glyph and name, then a line on what the mode does under the whole row */
+.mode-row {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.mode-row dd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.mode-row .hint {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--secondary);
+}
+.heat-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.heat-mode svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.heat-mode .gas {
+  stroke: var(--gas);
+}
+.heat-mode .electric {
+  stroke: var(--electric);
+}
+.heat-mode .backup {
+  opacity: .5;
+}
+.heat-mode .unused {
+  stroke: var(--mode-off);
+}
+.heat-mode .join {
+  width: 14px;
+  height: 14px;
+  stroke: var(--secondary);
+  stroke-width: 2;
 }
 .sheet footer {
   display: flex;

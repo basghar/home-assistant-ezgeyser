@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Heating modes, as in the Android app: **Next scheduled event** gains a `heating_mode` attribute, the schedule's
+  source and switch-over as one choice: `gas_only`, `gas_backup`, `electric_only`, `electric_backup` or `hybrid`, and
+  `null` for an unknown source. A schedule that leaves switch-over out reads as off. `source`, `source_code` and
+  `switch_over` stay; `switch_over` is now named **Switch-over**, since it works both ways.
+- **Breaking:** source codes 2 and 3 are named from the geyser's firmware. **Heating source** and the next event's
+  `source` now read `electric` and `hybrid` (shown as **Both together**) for them instead of `unknown`; automations that matched `unknown` for those
+  codes need updating. Any other code is still `unknown`.
+- Card: the details window shows one **Heating mode** row instead of **Heat source** and **Switch-over**: flame and
+  bolt in their colours (a backup at half strength after an arrow, Both together joined by a plus), the mode's name, and a
+  line on what it does. The option is now **Show heating mode in schedule details** (still `show_heat_source`).
+- Card: the **Mode** pill shows the bolt for electric and both icons for Both together, without the arrow, since the live
+  source is never a mode.
+- Update the README screenshots and their descriptions.
+
 ## 0.6.10 (2026-11-15)
 
 - Card: the footer says the state only. The status chip no longer shows the timer (**Timer remaining** is unchanged),

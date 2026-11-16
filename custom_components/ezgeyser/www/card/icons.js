@@ -17,8 +17,9 @@ export const PATHS = {
   beach:
     'M17.553 16.75a7.5 7.5 0 0 0-10.606 0M18 3.804A6 6 0 0 0 9.804 6l10.392 6A6 6 0 0 0 18 3.804M16.732 10C18.39 7.13 18.957 4.356 18 3.804S14.925 5.13 13.268 8M15 9l-3 5.196M3 19.25A2.4 2.4 0 0 1 4 19a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 1 .25',
   close: 'M18 6L6 18M6 6l12 12',
-  // Arrow-right, for the mode pill.
+  // Arrow-right and a plus, the joins of the heating mode glyph.
   arrow: 'M5 12h14M13 18l6-6M13 6l6 6',
+  plus: 'M12 6v12M6 12h12',
   // Check, rocket (Boost; the bolt means electric heating only), clock, clock-exclamation, cloud and cloud-off.
   check: 'M5 12l5 5L20 7',
   rocket:
@@ -31,12 +32,34 @@ export const PATHS = {
     'M9.58 5.548q.361-.166.752-.286c1.88-.572 3.956-.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 .957-.383 1.824-1.003 2.454M18 18.004H6.657C4.085 18 2 15.993 2 13.517s2.085-4.482 4.657-4.482c.13-.582.37-1.128.7-1.62M3 3l18 18',
 };
 
-// The live heat icons and the mode pill draw these filled or outlined. Gas is the Tabler flame (it was a teardrop that
+// The live heat icons, the mode pill and the heating mode glyph draw these filled or outlined. Gas is the Tabler flame (it was a teardrop that
 // read as water), the same path as the Android app's; it ends where it starts, so it also fills cleanly.
 export const HEAT_GLYPHS = {
   gas: 'M12 10.941c2.333-3.308.167-7.823-1-8.941c0 3.395-2.235 5.299-3.667 6.706C5.903 10.114 5 12 5 14.294C5 17.998 8.134 21 12 21s7-3.002 7-6.706c0-1.712-1.232-4.403-2.333-5.588c-2.084 3.353-3.257 3.353-4.667 2.235',
   electric: 'M13.6 2 5 13.4h6.2L10.2 22 19 10.4h-6.2L13.6 2Z',
 };
+
+// The heating mode glyphs, as in the Android app. Gas only and electric only keep flame then bolt, the one in use in its
+// hue and the other in the mode-off grey; a backup mode is the main source, an arrow, then the backup in its hue at half
+// strength, so it never reads like hybrid; hybrid is flame, a plus, then bolt, both in their hues.
+const MODE_GLYPHS = {
+  gas_only: ['gas', 'electric unused'],
+  gas_backup: ['gas', 'arrow', 'electric backup'],
+  electric_only: ['gas unused', 'electric'],
+  electric_backup: ['electric', 'arrow', 'gas backup'],
+  hybrid: ['gas', 'plus', 'electric'],
+};
+
+// One element that screen readers hear as `label`, the mode's spoken name.
+export function heatModeGlyph(mode, label) {
+  const parts = MODE_GLYPHS[mode].map((part) => {
+    const name = part.split(' ')[0];
+    return name in HEAT_GLYPHS
+      ? html`<svg class="${part}" viewBox="0 0 24 24" aria-hidden="true"><path d="${HEAT_GLYPHS[name]}"/></svg>`
+      : html`<svg class="join" viewBox="0 0 24 24" aria-hidden="true"><path d="${PATHS[name]}"/></svg>`;
+  });
+  return html`<span class="heat-mode" role="img" aria-label="${label}">${parts}</span>`;
+}
 
 export const icon = (name) => html`
   <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"

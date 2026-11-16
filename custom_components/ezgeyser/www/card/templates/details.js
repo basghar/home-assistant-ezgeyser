@@ -1,8 +1,21 @@
 // The next scheduled event's details window, a native <dialog> outside the card.
 import { html } from '../html.js';
-import { icon } from '../icons.js';
+import { heatModeGlyph, icon } from '../icons.js';
 
 const row = (label, value) => html`<div class="row"><dt>${label}</dt><dd>${value}</dd></div>`;
+
+// The heating mode: its glyph, which screen readers hear as the spoken name, and its name, then a line on what it does.
+// A source the integration cannot name shows as its code, with no glyph.
+function modeRow(schedule) {
+  const mode = schedule.mode;
+  if (!mode) return row('Heating mode', schedule.source);
+  return html`
+    <div class="row mode-row">
+      <dt>Heating mode</dt>
+      <dd>${heatModeGlyph(mode.key, mode.spoken)}<span aria-hidden="true">${mode.name}</span></dd>
+      <dd class="hint">${mode.hint}</dd>
+    </div>`;
+}
 
 export function details(schedule, showSource) {
   const target = schedule.off
@@ -20,7 +33,7 @@ export function details(schedule, showSource) {
       <p class="when">${schedule.when}</p>
       <dl>
         ${row('Target', target)}
-        ${showSource && [row('Heat source', schedule.source), row('Switch-over', schedule.switchOver)]}
+        ${showSource && modeRow(schedule)}
         ${row('Repeats', schedule.repeats)}
       </dl>
       <footer>

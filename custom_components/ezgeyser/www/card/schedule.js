@@ -1,5 +1,33 @@
 // The next scheduled event: what the card's line and the details window say about it.
 
+// The integration's `heating_mode` values: the name beside the glyph, the words a screen reader says instead of the "+",
+// and what the mode does. The same words as the Android app.
+export const HEATING_MODES = {
+  gas_only: { name: 'Gas only', spoken: 'Gas only', about: 'Heats with gas. Nothing heats while gas is out.' },
+  gas_backup: {
+    name: 'Gas + backup',
+    spoken: 'Gas with electric backup',
+    about: 'Heats with gas. Electric takes over while gas fails, if mains is on.',
+  },
+  electric_only: {
+    name: 'Electric only',
+    spoken: 'Electric only',
+    about: 'Heats with electric. Nothing heats during a power cut.',
+  },
+  electric_backup: {
+    name: 'Electric + backup',
+    spoken: 'Electric with gas backup',
+    about: 'Heats with electric. Gas takes over during a power cut.',
+  },
+  hybrid: {
+    name: 'Both together',
+    spoken: 'Both together, gas and electric',
+    about: 'Gas and electric heat together. Either carries on if the other is out.',
+  },
+};
+
+const SOURCES = { gas: 'Gas', electric: 'Electric', hybrid: 'Both together' };
+
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 // The zone the user's profile shows times in: the browser's (default) or the server's.
@@ -62,11 +90,17 @@ export function scheduleView(state, hass, now = new Date()) {
 
   const goal = off ? 'heating off' : target !== null ? `${target} ${unit}` : 'no target';
   const spokenGoal = off ? 'heating off' : target !== null ? `target ${target} degrees` : 'no target';
+  // The heating mode; without one, the source, the code the integration cannot name, or Unknown.
+  const known = HEATING_MODES[a.heating_mode];
   const source =
-    a.source === 'gas' ? 'Gas' : Number.isFinite(a.source_code) ? `Source ${a.source_code} (unverified)` : 'Unknown';
-  // Switch-over moves from gas, the cheaper source, to electric.
-  const switchOver = a.switch_over === true ? 'On, gas to electric' : a.switch_over === false ? 'Off' : 'Unknown';
-  const switchOverShort = a.switch_over === true ? 'on' : a.switch_over === false ? 'off' : 'unknown';
+    SOURCES[a.source] || (Number.isFinite(a.source_code) ? `Source code ${a.source_code} (unverified)` : 'Unknown');
+  // Gas or electric with no switch-over action leaves the backup as it was: the geyser applies only the listed actions.
+  const unlisted = typeof a.switch_over !== 'boolean' && a.heating_mode !== 'hybrid';
+  const mode = known && {
+    key: a.heating_mode,
+    ...known,
+    hint: unlisted ? "This entry doesn't set switch-over, so the backup stays as it was." : known.about,
+  };
 
   return {
     days,
@@ -74,12 +108,11 @@ export function scheduleView(state, hass, now = new Date()) {
     target,
     unit,
     time,
+    mode,
     source,
-    switchOver,
     when: `${day} · ${dateText} · ${time}`,
     repeats: repeatText(Array.isArray(a.repeat_days) ? a.repeat_days : null, lang),
     spoken: `Next scheduled event ${day.toLowerCase()} at ${time}, ${spokenGoal}`,
-    summary: (showSource) =>
-      `${day} ${time}: ${goal}${showSource ? `, ${source}, switch-over ${switchOverShort}` : ''}`,
+    summary: (showSource) => `${day} ${time}: ${goal}${showSource ? `, ${mode ? mode.name : source}` : ''}`,
   };
 }

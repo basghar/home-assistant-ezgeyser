@@ -1,6 +1,6 @@
 // Row 3: the heat status chip and the mode pill, then the connectivity icons at the end.
 import { html } from '../html.js';
-import { HEAT_GLYPHS, PATHS, icon, wifiIcon } from '../icons.js';
+import { HEAT_GLYPHS, icon, wifiIcon } from '../icons.js';
 import { WIFI, linkLabel } from '../status.js';
 
 function heatLabel(kind, first, second, count, known) {
@@ -71,17 +71,12 @@ const modeGlyph = (kind, allowed) => html`
     <path d="${HEAT_GLYPHS[kind]}"/>
   </svg>`;
 
-const modeArrow = html`<svg class="mode-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="${PATHS.arrow}"/></svg>`;
-
-// The configured heat source: flame and bolt, allowed or not, with an arrow for electric fallback. An unknown source
-// says so in words, rather than as two not-allowed icons that read like a mode.
+// The configured heat source: flame and bolt, allowed or not, both for hybrid. An unknown source says so in words,
+// rather than as two not-allowed icons that read like a mode.
 function modePill(mode) {
   if (!mode) return '';
   const value = mode.known
-    ? html`
-        <span class="mode-icons">
-          ${modeGlyph('gas', mode.gas)}${mode.gas && mode.electric && modeArrow}${modeGlyph('electric', mode.electric)}
-        </span>`
+    ? html`<span class="mode-icons">${modeGlyph('gas', mode.gas)}${modeGlyph('electric', mode.electric)}</span>`
     : html`<span class="quiet">Unknown</span>`;
   return html`
     <button class="mode entity-button" data-entity="source" aria-label="${mode.label}. Open heating source details"

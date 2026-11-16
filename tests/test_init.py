@@ -4,7 +4,7 @@ from typing import Any
 
 from custom_components.ezgeyser.const import DOMAIN
 from custom_components.ezgeyser.schedule import NextEvent
-from custom_components.ezgeyser.sensor import NEXT_EVENT_ATTRIBUTES, wifi_level
+from custom_components.ezgeyser.sensor import NEXT_EVENT_ATTRIBUTES, heating_mode, wifi_level
 from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
@@ -221,21 +221,24 @@ async def test_an_enabled_raw_temperature_shows_every_reading(
     assert hass.states.get("sensor.kitchen_temperature_top").state == "43.1"
 
 
-async def test_heating_source_is_an_enum_and_an_unconfirmed_code_is_unknown_with_the_code_kept(
+async def test_heating_source_is_an_enum_and_an_unknown_code_is_unknown_with_the_code_kept(
     hass: HomeAssistant, entry: MockConfigEntry, geyser: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     await _setup(hass, entry)
     source = hass.states.get("sensor.kitchen_heating_source")
     assert source.attributes["options"] == ["gas", "electric", "hybrid", "unknown"]
     assert source.attributes["source_code"] == 1
+    # The live source is never a mode: switch-over may have replaced it.
+    assert "heating_mode" not in source.attributes
 
-    _answer(geyser, QUICK_STATUS.replace(b'"source":1', b'"source":3'))
-    freezer.tick(timedelta(seconds=1))
-    async_fire_time_changed(hass)
-    await hass.async_block_till_done()
+    for code, state in [(2, "electric"), (3, "hybrid"), (7, "unknown")]:
+        _answer(geyser, QUICK_STATUS.replace(b'"source":1', f'"source":{code}'.encode()))
+        freezer.tick(timedelta(seconds=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
 
-    source = hass.states.get("sensor.kitchen_heating_source")
-    assert (source.state, source.attributes["source_code"]) == ("unknown", 3)
+        source = hass.states.get("sensor.kitchen_heating_source")
+        assert (source.state, source.attributes["source_code"]) == (state, code)
 
 
 async def test_two_missed_reads_are_tolerated_and_the_third_makes_it_unavailable(
@@ -289,24 +292,49 @@ async def test_next_event_attributes_carry_the_schedule_settings(
     assert {key: state.attributes[key] for key in NEXT_EVENT_ATTRIBUTES} == {
         "target_temperature": 60.0,
         "heating_off": False,
+        "heating_mode": "gas_only",
         "source": "gas",
         "source_code": 1,
         "switch_over": False,
         "repeat_days": ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
     }
 
-    coordinator.next_event = NextEvent(at, 0.0, 3, True, (False, True, False, False, False, False, True))
+    coordinator.next_event = NextEvent(at, 0.0, 2, True, (False, True, False, False, False, False, True))
     coordinator.async_update_listeners()
     attributes = hass.states.get(entity_id).attributes
     assert (attributes["target_temperature"], attributes["heating_off"]) == (None, True)
-    assert (attributes["source"], attributes["source_code"], attributes["switch_over"]) == ("unknown", 3, True)
+    assert (attributes["heating_mode"], attributes["source"], attributes["source_code"], attributes["switch_over"]) == (
+        "electric_backup",
+        "electric",
+        2,
+        True,
+    )
     assert attributes["repeat_days"] == ["monday", "saturday"]
+
+    coordinator.next_event = NextEvent(at, 60.0, 7, True)
+    coordinator.async_update_listeners()
+    attributes = hass.states.get(entity_id).attributes
+    assert (attributes["heating_mode"], attributes["source"], attributes["source_code"]) == (None, "unknown", 7)
 
     hass.config.units = US_CUSTOMARY_SYSTEM
     coordinator.next_event = NextEvent(at, 60.0)
     coordinator.async_update_listeners()
     attributes = hass.states.get(entity_id).attributes
     assert (attributes["target_temperature"], attributes["source"], attributes["repeat_days"]) == (140.0, None, None)
+    assert attributes["heating_mode"] is None
+
+
+@pytest.mark.parametrize(
+    ("source_code", "switch_over", "mode"),
+    [(1, False, "gas_only"), (1, True, "gas_backup"), (2, False, "electric_only"), (2, True, "electric_backup"),
+     (3, False, "hybrid"), (3, True, "hybrid"), (3, None, "hybrid"),
+     # An unlisted switch-over reads as off; an unknown or missing source is no mode.
+     (1, None, "gas_only"), (2, None, "electric_only"), (7, True, None), (0, False, None), (None, True, None)],
+)  # fmt: skip
+def test_heating_mode_is_source_and_switch_over_as_in_the_android_app(
+    source_code: int | None, switch_over: bool | None, mode: str | None
+) -> None:
+    assert heating_mode(source_code, switch_over) == mode
 
 
 @pytest.mark.parametrize(

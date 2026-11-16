@@ -89,7 +89,7 @@ For a geyser named **Kitchen**:
 | `binary_sensor.kitchen_burner_right_flame_sensor` | **Flame** / **No flame**: flame input 2 (`burner2Status`). |
 | `binary_sensor.kitchen_heating_element_1` | **Heating** / **Off**: electric heating element 1, as commanded. |
 | `binary_sensor.kitchen_heating_element_2` | **Heating** / **Off**: electric heating element 2, as commanded. |
-| `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Hybrid** or **Unknown**: the source in use; switch-over can temporarily replace the one you chose. |
+| `sensor.kitchen_heating_source` | **Gas**, **Electric**, **Both together** or **Unknown**: the source in use; switch-over can temporarily replace the one you chose. |
 | `binary_sensor.kitchen_heating_boost_mode` | **Active** / **Inactive**: boost mode. |
 | `binary_sensor.kitchen_heating_vacation_mode` | **Active** / **Inactive**: vacation mode. |
 | `sensor.kitchen_timer_remaining` | Whole minutes left on the running timer (at least 1 while any time is left), shown without a unit. 0 when no timer runs. |
@@ -103,8 +103,8 @@ For a geyser named **Kitchen**:
 
 The labels are for display. In automations and templates, binary sensors are `on` (the first label) or `off`, the
 heating source is `gas`, `electric`, `hybrid` or `unknown`, and the Wi-Fi signal is `excellent`, `good`, `fair`,
-`weak` or `very_weak`. The geyser codes Gas as 1, Electric as 2 and Hybrid as 3, but this version names only code 1:
-any other code shows as Unknown, and its raw value is in the `source_code` attribute.
+`weak` or `very_weak`. The geyser codes Gas as 1, Electric as 2 and Both together as 3 (state `hybrid`); any other code shows as
+Unknown, with its raw value in the `source_code` attribute.
 
 The `temperature_`, `heating_`, `timer_`, `network_` and `device_` parts group the entities by kind. If you rename the
 device later (**Settings > Devices**), Home Assistant offers to rename its entity IDs to match.
@@ -127,7 +127,7 @@ The real card with **simulated readings**; the geysers and values are made up.
 | **Idle** | **Heating on gas**, dark theme |
 | ![Laundry heating on both electric elements, in vacation mode](assets/screenshots/electric-heating.png) | ![Guest Bathroom with a top sensor fault, weak Wi-Fi and the cloud offline, dark theme](assets/screenshots/sensor-fault.png) |
 | **Heating on the elements** | **Three issues**, dark theme |
-| ![Garage unreachable, with muted last known values](assets/screenshots/unreachable.png) | ![Next scheduled event details: today 9:30 PM, target 55 °C, Gas, switch-over on, weekdays](assets/screenshots/details.png) |
+| ![Garage unreachable, with muted last known values](assets/screenshots/unreachable.png) | ![Next scheduled event details: today 9:30 PM, target 55 °C, heating mode Gas + backup, weekdays](assets/screenshots/details.png) |
 | **Unreachable** | **Next event details** |
 
 Cards narrower than about 295 px stack their readings, as in the Android app, so cards side by side stay the same
@@ -147,7 +147,7 @@ to add. It has no dependencies and makes no network requests of its own.
 
 1. Open your dashboard, select **Edit > Add card**, and search for **ezGeyser overview**.
 2. Pick your geyser under **Geyser**. Optionally set the name, main temperature, number of electric elements, theme,
-   and whether schedule details show the heat source and switch-over.
+   and whether schedule details show the heating mode.
 3. Save. Add one card per geyser.
 
 If the card is not in the list, restart Home Assistant, hard-refresh your browser, and check the logs for ezGeyser
@@ -172,9 +172,9 @@ setup errors. Installations without Home Assistant's `frontend` skip the card.
   report on, or **Idle** when all four flags are off. When only one flame sensor reports on, the half-lit flame alone
   says so (screen readers hear **Flame detected**). These labels do not establish valve position or the cause of a
   flame indication. While the heating status is unknown the chip holds only the dimmed icons. The **Mode** pill shows
-  flame and bolt icons for gas only, electric only, or both with an arrow for hybrid, and reads **Unknown** for any
-  other source; select it for source details. On the right are the Wi-Fi icon, whose lit arcs show the level (unlit
-  arcs stay visible, muted), the cloud link and, only while it is off, the device clock; amber marks a problem.
+  the heating source sensor: the flame for gas, the bolt for electric, both for both together, or **Unknown**; select it for
+  source details. On the right are the Wi-Fi icon, whose lit arcs show the level (unlit arcs stay visible, muted), the
+  cloud link and, only while it is off, the device clock; amber marks a problem.
 - **Unreachable:** the last values this browser saw, muted, with the time Home Assistant last updated them. That is
   not necessarily the last successful read. A freshly opened page has no last values and shows dashes.
 - **Check entities:** the card cannot find the selected geyser's entities.
@@ -207,7 +207,7 @@ name: Ground Floor Bathroom
 | `main` | `top` | Which sensor is the large reading: `top` or `bottom`. The tank halves never swap. |
 | `element_count` | `2` | `1` draws a single element bar, lit when either element flag is on. The card never guesses which elements are installed. |
 | `theme` | `auto` | `auto` follows Home Assistant; `light` or `dark` forces a palette. |
-| `show_heat_source` | `true` | `false` hides **Heat source** and **Switch-over** in the schedule details, for a gas-only or electric-only geyser. |
+| `show_heat_source` | `true` | `false` hides **Heating mode** in the schedule details, for a gas-only or electric-only geyser. |
 
 The card finds the geyser's entities by device, so renaming the device or any entity never breaks it. The same
 example is in [`dashboards/geyser.yaml`](dashboards/geyser.yaml).
@@ -273,8 +273,9 @@ same values are the sensor's attributes, each `null` when the schedule leaves it
 |---|---|
 | `target_temperature` | In your temperature unit; `null` when the event turns heating off. |
 | `heating_off` | `true` when the scheduled target is 0. |
+| `heating_mode` | `gas_only`, `gas_backup`, `electric_only`, `electric_backup` or `hybrid`: `source` and `switch_over` as one choice; `null` for an unknown source. With a backup, electric takes over while gas fails, or gas during a power cut. A schedule without switch-over reads as off. |
 | `source`, `source_code` | As for the heating source sensor. |
-| `switch_over` | `true` when the geyser may switch to the other source while gas or mains is unavailable. |
+| `switch_over` | The raw switch-over flag behind `heating_mode`. |
 | `repeat_days` | The days it runs on, `sunday` to `saturday`. |
 
 ## Safety

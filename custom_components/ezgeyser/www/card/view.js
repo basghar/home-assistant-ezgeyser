@@ -25,12 +25,13 @@ export function availability(states, config) {
 }
 
 // The configured heating source, which the device's `source` code selects: which heat sources the mode allows, not what
-// heats right now. Allowed sources are neutral, never the gas and electric colours of the live heat icons. Only the gas
-// code is confirmed on a device; the sensor maps any other code to unknown, with the raw code in `source_code`.
+// heats right now. Allowed sources are neutral, never the gas and electric colours of the live heat icons. It is the
+// source alone, never a heating mode: the live source is the one in use, which switch-over may have replaced, and the
+// geyser reports no live switch-over flag. The sensor maps any other code to unknown, with the raw code in `source_code`.
 const MODES = {
   gas: { label: 'Mode: gas only', gas: true, electric: false },
-  hybrid: { label: 'Mode: gas, with electric fallback', gas: true, electric: true },
   electric: { label: 'Mode: electric only', gas: false, electric: true },
+  hybrid: { label: 'Mode: both together, gas and electric', gas: true, electric: true },
 };
 
 function modeView(state) {
