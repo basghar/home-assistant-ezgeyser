@@ -232,8 +232,8 @@ export class EzGeyserCard extends HTMLElement {
   }
 
   // The 3..21 paths plus their 2-unit stroke paint 20/24 of the canvas. A 120% SVG fills its square slot, sized to 88%
-  // of the measured badge height, so the actions don't outweigh the badge; 10 px between slots is also 10 px between
-  // the painted edges.
+  // of the measured badge height, so the action doesn't outweigh the badge; 10 px from the badge is also 10 px from the
+  // painted edge.
   // Measured before the layout cache: font metrics can change the pill height without changing its text.
   _sizeHeaderActions(card) {
     const badge = card.querySelector('.badge');

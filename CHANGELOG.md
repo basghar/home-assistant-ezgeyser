@@ -15,6 +15,8 @@
 - Card: the **Mode** pill shows the bolt for electric and both icons for Both together, without the arrow, since the live
   source is never a mode.
 - Update the README screenshots and their descriptions.
+- Card: remove the ⓘ button from the header. The main reading opens the same details, so the box-and-gear device page
+  action is now the only one after the badge.
 
 ## 0.6.10 (2026-11-15)
 

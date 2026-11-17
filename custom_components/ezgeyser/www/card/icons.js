@@ -8,7 +8,6 @@ export const PATHS = {
   temperature: 'M10 13.5a4 4 0 1 0 4 0v-8.5a2 2 0 0 0-4 0v8.5M10 9h4',
   offline:
     'M3 3l18 18M2 8a16 16 0 0 1 4-2m4-1a16 16 0 0 1 12 3M5 12a11 11 0 0 1 5-2m5 0a11 11 0 0 1 4 2M8 16a6 6 0 0 1 8 0M12 20h.01',
-  info: 'M12 11v6m0-10v.1M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0',
   // Calendar-time, calendar-off, beach and x.
   calendarClock:
     'M11.795 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M14 18a4 4 0 1 0 8 0a4 4 0 1 0-8 0m1-15v4M7 3v4m-4 4h16M18 16.496V18l1 1',
@@ -67,8 +66,8 @@ export const icon = (name) => html`
     <path d="${PATHS[name]}"/>
   </svg>`;
 
-// The device-page glyph (a window with an outward arrow, and a gear): it shares the info circle's 3..21 geometry; both
-// scale just inside the badge's painted height.
+// The device-page glyph (a window with an outward arrow, and a gear), drawn in 3..21 of the 24 canvas; it scales just
+// inside the badge's painted height.
 const gearTeeth = Array.from({ length: 8 }, (_, i) => {
   const angle = (i * Math.PI) / 4;
   const point = (radius) =>

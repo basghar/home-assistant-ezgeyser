@@ -1,4 +1,4 @@
-// Row 1: the geyser's name, the status badge, main-temperature details, and the device's own web page.
+// Row 1: the geyser's name, the status badge and the device's own web page. The readings open their own details.
 import { html } from '../html.js';
 import { devicePageIcon, icon } from '../icons.js';
 
@@ -22,8 +22,5 @@ export const header = (view) => html`
          title="${view.badge.label}">
       ${icon(view.badge.icon)}<span>${view.badge.text}</span>
     </div>
-    <button class="details-button entity-button" data-entity="${view.main}" aria-label="Open main temperature details">
-      ${icon('info')}
-    </button>
     ${devicePageLink(view.devicePage)}
   </div>`;

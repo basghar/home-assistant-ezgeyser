@@ -401,7 +401,7 @@ test('offline uses session cache and a fresh page has no invented readings', () 
   assert.match(html, /Last known values/);
   assert.doesNotMatch(html, /class="heat /);
   assert.doesNotMatch(html, /Open details/);
-  assert.match(html, /aria-label="Open main temperature details"/);
+  assert.match(html, /class="reading entity-button" data-entity="top" aria-label="Open top temperature details"/);
   const fresh = setup();
   fresh.card._last = null;
   fresh.card._signature = null;
@@ -1196,9 +1196,9 @@ test('the rightmost action is the selected device root page, separate from Home 
     link(),
     /aria-label="Open device page in browser" title="Open 192.168.1.50" href="http:\/\/192.168.1.50\/" target="_blank" rel="noopener noreferrer"/,
   );
-  assert.ok(
-    t.html().indexOf('aria-label="Open main temperature details"') < t.html().indexOf('data-action="device-page"'),
-  );
+  // No info button: the main reading itself opens its details.
+  assert.doesNotMatch(t.html(), /Open main temperature details/);
+  assert.match(t.html(), /<\/div>\s*<a class="details-button device-page-button"[^>]*>[\s\S]*?<\/a>\s*<\/div>/);
   t.card.card.click({
     target: {
       closest: (selector) =>
